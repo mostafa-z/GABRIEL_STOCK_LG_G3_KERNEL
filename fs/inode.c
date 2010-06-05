@@ -450,6 +450,18 @@ static unsigned long hash(struct super_block *sb, unsigned long hashval)
 	return tmp & i_hash_mask;
 }
 
+void end_writeback(struct inode *inode)
+{
+	might_sleep();
+	BUG_ON(inode->i_data.nrpages);
+	BUG_ON(!list_empty(&inode->i_data.private_list));
+	BUG_ON(!(inode->i_state & I_FREEING));
+	BUG_ON(inode->i_state & I_CLEAR);
+	inode_sync_wait(inode);
+	inode->i_state = I_FREEING | I_CLEAR;
+}
+EXPORT_SYMBOL(end_writeback);
+
 /**
  *	__insert_inode_hash - hash an inode
  *	@inode: unhashed inode
