@@ -4402,7 +4402,7 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int flags)
 	int sync = flags & WF_SYNC;
 	struct sd_lb_stats sds;
 
-	if (p->rt.nr_cpus_allowed == 1)
+	if (p->nr_cpus_allowed == 1)
 		return prev_cpu;
 
 	if (sysctl_sched_enable_hmp_task_placement)
