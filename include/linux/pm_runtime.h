@@ -153,9 +153,6 @@ static inline unsigned long pm_runtime_autosuspend_expiration(
 static inline void pm_runtime_set_memalloc_noio(struct device *dev,
 						bool enable){}
 
-static inline void pm_runtime_update_max_time_suspended(struct device *dev,
-							s64 delta_ns) {}
-
 #endif /* !CONFIG_PM_RUNTIME */
 
 static inline int pm_runtime_idle(struct device *dev)
