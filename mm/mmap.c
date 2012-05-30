@@ -1176,7 +1176,6 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	struct mm_struct * mm = current->mm;
 	struct inode *inode;
 	vm_flags_t vm_flags;
-	int error;
 
 	/*
 	 * Does the application expect PROT_READ to imply PROT_EXEC?
@@ -1300,10 +1299,6 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			return -EINVAL;
 		}
 	}
-
-	error = security_mmap_addr(addr);
-	if (error)
-		return error;
 
 	return mmap_region(file, addr, len, flags, vm_flags, pgoff);
 }
@@ -1957,7 +1952,9 @@ get_unmapped_area(struct file *file, unsigned long addr, unsigned long len,
 	if (addr & ~PAGE_MASK)
 		return -EINVAL;
 
-	return arch_rebalance_pgtables(addr, len);
+	addr = arch_rebalance_pgtables(addr, len);
+	error = security_mmap_addr(addr);
+	return error ? error : addr;
 }
 
 EXPORT_SYMBOL(get_unmapped_area);
@@ -2568,10 +2565,6 @@ static unsigned long do_brk(unsigned long addr, unsigned long len)
 	if (!len)
 		return addr;
 
-	error = security_mmap_addr(addr);
-	if (error)
-		return error;
-
 	flags = VM_DATA_DEFAULT_FLAGS | VM_ACCOUNT | mm->def_flags;
 	uksm_vm_flags_mod(&flags);
 
@@ -2932,10 +2925,6 @@ int install_special_mapping(struct mm_struct *mm,
 
 	vma->vm_ops = &special_mapping_vmops;
 	vma->vm_private_data = pages;
-
-	ret = security_mmap_addr(vma->vm_start);
-	if (ret)
-		goto out;
 
 	ret = insert_vm_struct(mm, vma);
 	if (ret)
