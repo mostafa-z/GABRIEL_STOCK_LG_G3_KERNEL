@@ -1870,54 +1870,11 @@ static void rcu_leak_callback(struct rcu_head *rhp)
 }
 
 /*
- * Helper function for call_rcu() and friends.  The cpu argument will
- * normally be -1, indicating "currently running CPU".  It may specify
- * a CPU only if that CPU is a no-CBs CPU.  Currently, only _rcu_barrier()
- * is expected to specify a CPU.
+ * Handle any core-RCU processing required by a call_rcu() invocation.
  */
-static void
-__call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
-	   struct rcu_state *rsp, bool lazy)
+static void __call_rcu_core(struct rcu_state *rsp, struct rcu_data *rdp,
+			    struct rcu_head *head, unsigned long flags)
 {
-	unsigned long flags;
-	struct rcu_data *rdp;
-
-	WARN_ON_ONCE((unsigned long)head & 0x3); /* Misaligned rcu_head! */
-	if (debug_rcu_head_queue(head)) {
-		/* Probable double call_rcu(), so leak the callback. */
-		ACCESS_ONCE(head->func) = rcu_leak_callback;
-		WARN_ONCE(1, "__call_rcu(): Leaked duplicate callback\n");
-		return;
-	}
-	head->func = func;
-	head->next = NULL;
-
-	smp_mb(); /* Ensure RCU update seen before callback registry. */
-
-	/*
-	 * Opportunistically note grace-period endings and beginnings.
-	 * Note that we might see a beginning right after we see an
-	 * end, but never vice versa, since this CPU has to pass through
-	 * a quiescent state betweentimes.
-	 */
-	local_irq_save(flags);
-	rdp = this_cpu_ptr(rsp->rda);
-
-	/* Add the callback to our list. */
-	ACCESS_ONCE(rdp->qlen)++;
-	if (lazy)
-		rdp->qlen_lazy++;
-	else
-		rcu_idle_count_callbacks_posted();
-	smp_mb();  /* Count before adding callback for rcu_barrier(). */
-	*rdp->nxttail[RCU_NEXT_TAIL] = head;
-	rdp->nxttail[RCU_NEXT_TAIL] = &head->next;
-
-	if (__is_kfree_rcu_offset((unsigned long)func))
-		trace_rcu_kfree_callback(rsp->name, head, (unsigned long)func,
-					 rdp->qlen_lazy, rdp->qlen);
-	else
-		trace_rcu_callback(rsp->name, head, rdp->qlen_lazy, rdp->qlen);
 
 	/*
 	 * If called from an extended quiescent state, invoke the RCU
@@ -1927,10 +1884,8 @@ __call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
 		invoke_rcu_core();
 
 	/* If interrupts were disabled or CPU offline, don't invoke RCU core. */
-	if (irqs_disabled_flags(flags) || cpu_is_offline(smp_processor_id())) {
-		local_irq_restore(flags);
+	if (irqs_disabled_flags(flags) || cpu_is_offline(smp_processor_id()))
 		return;
-	}
 
 	/*
 	 * Force the grace period if too many callbacks or too long waiting.
@@ -1963,6 +1918,49 @@ __call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
 		}
 	} else if (ULONG_CMP_LT(ACCESS_ONCE(rsp->jiffies_force_qs), jiffies))
 		force_quiescent_state(rsp, 1);
+}
+
+static void
+__call_rcu(struct rcu_head *head, void (*func)(struct rcu_head *rcu),
+	   struct rcu_state *rsp, bool lazy)
+{
+	unsigned long flags;
+	struct rcu_data *rdp;
+
+	WARN_ON_ONCE((unsigned long)head & 0x3); /* Misaligned rcu_head! */
+	debug_rcu_head_queue(head);
+	head->func = func;
+	head->next = NULL;
+
+	smp_mb(); /* Ensure RCU update seen before callback registry. */
+
+	/*
+	 * Opportunistically note grace-period endings and beginnings.
+	 * Note that we might see a beginning right after we see an
+	 * end, but never vice versa, since this CPU has to pass through
+	 * a quiescent state betweentimes.
+	 */
+	local_irq_save(flags);
+	rdp = this_cpu_ptr(rsp->rda);
+
+	/* Add the callback to our list. */
+	ACCESS_ONCE(rdp->qlen)++;
+	if (lazy)
+		rdp->qlen_lazy++;
+	else
+		rcu_idle_count_callbacks_posted();
+	smp_mb();  /* Count before adding callback for rcu_barrier(). */
+	*rdp->nxttail[RCU_NEXT_TAIL] = head;
+	rdp->nxttail[RCU_NEXT_TAIL] = &head->next;
+
+	if (__is_kfree_rcu_offset((unsigned long)func))
+		trace_rcu_kfree_callback(rsp->name, head, (unsigned long)func,
+					 rdp->qlen_lazy, rdp->qlen);
+	else
+		trace_rcu_callback(rsp->name, head, rdp->qlen_lazy, rdp->qlen);
+
+	/* Go handle any RCU core processing required. */
+	__call_rcu_core(rsp, rdp, head, flags);
 	local_irq_restore(flags);
 }
 
