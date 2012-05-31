@@ -7,6 +7,7 @@
 #include <linux/swap.h>
 #include <linux/swapops.h>
 #include <linux/vmalloc.h>
+#include <linux/security.h>
 #include <asm/uaccess.h>
 
 #include "internal.h"
@@ -372,6 +373,35 @@ void kvfree(void *buffer)
 		kfree(buffer);
 }
 EXPORT_SYMBOL(kvfree);
+
+unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot,
+	unsigned long flag, unsigned long pgoff)
+{
+	unsigned long ret;
+	struct mm_struct *mm = current->mm;
+
+	ret = security_mmap_file(file, prot, flag);
+	if (!ret) {
+		down_write(&mm->mmap_sem);
+		ret = do_mmap_pgoff(file, addr, len, prot, flag, pgoff);
+		up_write(&mm->mmap_sem);
+	}
+	return ret;
+}
+
+unsigned long vm_mmap(struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot,
+	unsigned long flag, unsigned long offset)
+{
+	if (unlikely(offset + PAGE_ALIGN(len) < offset))
+		return -EINVAL;
+	if (unlikely(offset & ~PAGE_MASK))
+		return -EINVAL;
+
+	return vm_mmap_pgoff(file, addr, len, prot, flag, offset >> PAGE_SHIFT);
+}
+EXPORT_SYMBOL(vm_mmap);
 
 struct address_space *page_mapping(struct page *page)
 {
