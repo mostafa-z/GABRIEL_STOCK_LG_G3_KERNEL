@@ -557,7 +557,7 @@ static bool set_nr_and_not_polling(struct task_struct *p)
 #ifdef CONFIG_SMP
 
 #ifndef tsk_is_polling
-#define tsk_is_polling(t) test_tsk_thread_flag(t, TIF_POLLING_NRFLAG)
+#define tsk_is_polling(t) 0
 #endif
 
 void resched_task(struct task_struct *p)
