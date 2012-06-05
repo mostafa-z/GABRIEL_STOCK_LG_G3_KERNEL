@@ -16,6 +16,8 @@
 ** GNU General Public License for more details.
 */
 
+#define pr_fmt(fmt) "ashmem: " fmt
+
 #include <linux/module.h>
 #include <linux/file.h>
 #include <linux/fs.h>
