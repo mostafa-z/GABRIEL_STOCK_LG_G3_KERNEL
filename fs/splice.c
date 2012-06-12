@@ -972,6 +972,7 @@ ssize_t splice_from_pipe(struct pipe_inode_info *pipe, struct file *out,
 		.pos = *ppos,
 		.u.file = out,
 	};
+	sb_start_write(inode->i_sb);
 
 	pipe_lock(pipe);
 	ret = __splice_from_pipe(pipe, &sd, actor);
@@ -1046,6 +1047,7 @@ generic_file_splice_write(struct pipe_inode_info *pipe, struct file *out,
 			*ppos += ret;
 		balance_dirty_pages_ratelimited(mapping);
 	}
+	sb_end_write(inode->i_sb);
 
 	return ret;
 }
