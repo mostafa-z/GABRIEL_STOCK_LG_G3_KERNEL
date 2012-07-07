@@ -6135,6 +6135,8 @@ recheck:
 		if (dl_policy(policy))
 			goto change;
 
+		__task_rq_unlock(rq);
+		raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 		return 0;
 	}
 change:
