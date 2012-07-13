@@ -136,13 +136,17 @@ static inline s64 timekeeping_get_ns(void)
 	cycle_delta = (cycle_now - clock->cycle_last) & clock->mask;
 
 	nsec = cycle_delta * timekeeper.mult + timekeeper.xtime_nsec;
-	return nsec >> timekeeper.shift;
+	nsec >>= timekeeper.shift;
+
+	/* If arch requires, add in gettimeoffset() */
+	return nsec + arch_gettimeoffset();
 }
 
 static inline s64 timekeeping_get_ns_raw(void)
 {
 	cycle_t cycle_now, cycle_delta;
 	struct clocksource *clock;
+	s64 nsec;
 
 	/* read clocksource: */
 	clock = timekeeper.clock;
@@ -151,8 +155,11 @@ static inline s64 timekeeping_get_ns_raw(void)
 	/* calculate the delta since the last update_wall_time: */
 	cycle_delta = (cycle_now - clock->cycle_last) & clock->mask;
 
-	/* return delta convert to nanoseconds. */
-	return clocksource_cyc2ns(cycle_delta, clock->mult, clock->shift);
+	/* convert delta to nanoseconds. */
+	nsec = clocksource_cyc2ns(cycle_delta, clock->mult, clock->shift);
+
+	/* If arch requires, add in gettimeoffset() */
+	return nsec + arch_gettimeoffset();
 }
 
 static void update_rt_offset(void)
@@ -238,9 +245,6 @@ int __getnstimeofday(struct timespec *ts)
 		ts->tv_sec = timekeeper.xtime_sec;
 		ts->tv_nsec = timekeeping_get_ns();
 
-		/* If arch requires, add in gettimeoffset() */
-		nsecs += arch_gettimeoffset();
-
 	} while (read_seqretry(&timekeeper.lock, seq));
 
 	timespec_add_ns(ts, nsecs);
@@ -288,8 +292,6 @@ void ktime_get_ts(struct timespec *ts)
 		ts->tv_sec = timekeeper.xtime_sec;
 		ts->tv_nsec = timekeeping_get_ns();
 		tomono = timekeeper.wall_to_monotonic;
-		/* If arch requires, add in gettimeoffset() */
-		ts->tv_nsec += arch_gettimeoffset();
 
 	} while (read_seqretry(&timekeeper.lock, seq));
 
@@ -317,8 +319,6 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 	WARN_ON_ONCE(timekeeping_suspended);
 
 	do {
-		u32 arch_offset;
-
 		seq = read_seqbegin(&timekeeper.lock);
 
 		*ts_raw = timekeeper.raw_time;
@@ -327,11 +327,6 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 
 		nsecs_raw = timekeeping_get_ns_raw();
 		nsecs_real = timekeeping_get_ns();
-
-		/* If arch requires, add in gettimeoffset() */
-		arch_offset = arch_gettimeoffset();
-		nsecs_raw += arch_offset;
-		nsecs_real += arch_offset;
 
 	} while (read_seqretry(&timekeeper.lock, seq));
 
@@ -864,8 +859,6 @@ ktime_t ktime_get(void)
 		nsecs = timekeeper.xtime.tv_nsec +
 				timekeeper.wall_to_monotonic.tv_nsec;
 		nsecs += timekeeping_get_ns();
-		/* If arch requires, add in gettimeoffset() */
-		nsecs += arch_gettimeoffset();
 
 	} while (read_seqretry(&timekeeper.lock, seq));
 
@@ -1416,8 +1409,6 @@ ktime_t ktime_get_update_offsets(ktime_t *offs_real, ktime_t *offs_boot)
 
 		secs = timekeeper.xtime_sec;
 		nsecs = timekeeping_get_ns();
-		/* If arch requires, add in gettimeoffset() */
-		nsecs += arch_gettimeoffset();
 
 		*offs_real = timekeeper.offs_real;
 		*offs_boot = timekeeper.offs_boot;
