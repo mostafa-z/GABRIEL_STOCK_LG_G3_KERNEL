@@ -5133,7 +5133,6 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int flags)
 	int new_cpu = cpu;
 	int power_cpu = -1;
 	int want_affine = 0;
-	int want_sd = 1;
 	int sync = flags & WF_SYNC;
 	struct sd_lb_stats sds;
 
@@ -5155,45 +5154,16 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int flags)
 			continue;
 
 		/*
-		 * If power savings logic is enabled for a domain, see if we
-		 * are not overloaded, if so, don't balance wider.
-		 */
-		if (tmp->flags & (SD_POWERSAVINGS_BALANCE|SD_PREFER_LOCAL)) {
-			unsigned long power = 0;
-			unsigned long nr_running = 0;
-			unsigned long capacity;
-			int i;
-
-			for_each_cpu(i, sched_domain_span(tmp)) {
-				power += power_of(i);
-				nr_running += cpu_rq(i)->cfs.nr_running;
-			}
-
-			capacity = DIV_ROUND_CLOSEST(power, SCHED_POWER_SCALE);
-
-			if (tmp->flags & SD_POWERSAVINGS_BALANCE)
-				nr_running /= 2;
-
-			if (nr_running < capacity)
-				want_sd = 0;
-		}
-
-		/*
 		 * If both cpu and prev_cpu are part of this domain,
 		 * cpu is a valid SD_WAKE_AFFINE target.
 		 */
 		if (want_affine && (tmp->flags & SD_WAKE_AFFINE) &&
 		    cpumask_test_cpu(prev_cpu, sched_domain_span(tmp))) {
 			affine_sd = tmp;
-			want_affine = 0;
+			break;
 		}
 
-		if (!want_sd && !want_affine)
-			break;
-
-		if (want_sd)
-
-		if (tmp->flags & sd_flag) {
+		if (tmp->flags & sd_flag)
 			sd = tmp;
 
 			power_cpu = get_cpu_for_power_policy(sd, cpu, p, &sds,
@@ -5204,7 +5174,7 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int flags)
 	}
 
 	if (affine_sd) {
-		if (cpu == prev_cpu || wake_affine(affine_sd, p, sync))
+		if (cpu != prev_cpu && wake_affine(affine_sd, p, sync))
                         prev_cpu = cpu;
 		power_cpu = get_cpu_for_power_policy(affine_sd, cpu, p, &sds, 1);
 		if (power_cpu != -1)
