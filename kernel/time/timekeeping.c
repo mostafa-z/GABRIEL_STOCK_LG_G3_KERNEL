@@ -195,7 +195,6 @@ static void timekeeping_update(struct timekeeper *tk, bool clearntp)
 	update_vsyscall(&xt, &tk->wall_to_monotonic, tk->clock, tk->mult);
 }
 
-
 /**
  * timekeeping_forward_now - update clock to the current time
  *
@@ -390,7 +389,6 @@ int do_settimeofday(const struct timespec *tv)
 
 EXPORT_SYMBOL(do_settimeofday);
 
-
 /**
  * timekeeping_inject_offset - Adds or subtracts from the current time.
  * @tv:		pointer to the timespec variable containing the offset
@@ -511,7 +509,6 @@ void getrawmonotonic(struct timespec *ts)
 	timespec_add_ns(ts, nsecs);
 }
 EXPORT_SYMBOL(getrawmonotonic);
-
 
 /**
  * timekeeping_valid_for_hres - Check if timekeeping is suitable for hres
@@ -659,7 +656,6 @@ static void __timekeeping_inject_sleeptime(struct timekeeper *tk,
 	update_sleep_time(timespec_add(tk->total_sleep_time, *delta));
 }
 
-
 /**
  * timekeeping_inject_sleeptime - Adds suspend interval to timeekeeping values
  * @delta: pointer to a timespec delta value
@@ -694,7 +690,6 @@ void timekeeping_inject_sleeptime(struct timespec *delta)
 	/* signal hrtimers about time change */
 	clock_was_set();
 }
-
 
 /**
  * timekeeping_resume - Resumes the generic timekeeping subsystem.
@@ -1074,7 +1069,6 @@ static void timekeeping_adjust(struct timekeeper *tk, s64 offset)
 
 }
 
-
 /**
  * accumulate_nsecs_to_secs - Accumulates nsecs into secs
  *
@@ -1102,7 +1096,6 @@ static inline void accumulate_nsecs_to_secs(struct timekeeper *tk)
 
 	}
 }
-
 
 /**
  * logarithmic_accumulation - shifted accumulation of cycles
@@ -1147,7 +1140,6 @@ static cycle_t logarithmic_accumulation(struct timekeeper *tk, cycle_t offset,
 
 	return offset;
 }
-
 
 /**
  * update_wall_time - Uses the current clocksource to increment the wall time
@@ -1255,7 +1247,6 @@ void getboottime(struct timespec *ts)
 	set_normalized_timespec(ts, -boottime.tv_sec, -boottime.tv_nsec);
 }
 EXPORT_SYMBOL_GPL(getboottime);
-
 
 /**
  * get_monotonic_boottime - Returns monotonic time since boot
