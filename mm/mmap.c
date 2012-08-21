@@ -2678,7 +2678,7 @@ void exit_mmap(struct mm_struct *mm)
 	mm->mmap_cache = NULL;
 	up_write(&mm->mmap_sem);
 
-	BUG_ON(mm->nr_ptes > (FIRST_USER_ADDRESS+PMD_SIZE-1)>>PMD_SHIFT);
+	WARN_ON(mm->nr_ptes > (FIRST_USER_ADDRESS+PMD_SIZE-1)>>PMD_SHIFT);
 }
 
 /* Insert vm structure into process list sorted by address
