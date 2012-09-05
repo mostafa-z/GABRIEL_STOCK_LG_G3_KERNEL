@@ -254,6 +254,8 @@ void machine_halt(void)
 void machine_power_off(void)
 {
 	machine_shutdown();
+	smp_send_stop();
+
 	if (pm_power_off)
 		pm_power_off();
 }
@@ -261,6 +263,7 @@ void machine_power_off(void)
 void machine_restart(char *cmd)
 {
 	machine_shutdown();
+	smp_send_stop();
 
 	/* Flush the console to make sure all the relevant messages make it
 	 * out to the console drivers */
