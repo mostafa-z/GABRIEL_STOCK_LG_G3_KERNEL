@@ -422,7 +422,7 @@ orginal_code:
 
 static int kgsl_page_alloc_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_DONTEXPAND | VM_DONTCOPY;
+	return VM_DONTDUMP | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 /*
@@ -468,7 +468,7 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
 {
-	return VM_RESERVED | VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTCOPY;
+	return VM_DONTDUMP | VM_PFNMAP | VM_DONTEXPAND | VM_DONTCOPY;
 }
 
 /*
