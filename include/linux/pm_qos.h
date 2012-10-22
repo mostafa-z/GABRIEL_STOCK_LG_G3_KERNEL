@@ -168,7 +168,11 @@ struct dev_pm_qos {
 	struct pm_qos_constraints latency;
 };
 
-/* Action requested to pm_qos_update_target */
+struct pm_qos_flags {
+	struct list_head list;
+	s32 effective_flags;	/* Do not change to 64 bit */
+};
+
 enum pm_qos_req_action {
 	PM_QOS_ADD_REQ,		/* Add a new request */
 	PM_QOS_UPDATE_REQ,	/* Update an existing request */
