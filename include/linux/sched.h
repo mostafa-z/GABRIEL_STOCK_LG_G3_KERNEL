@@ -1634,6 +1634,13 @@ struct task_struct {
 	short il_next;
 	short pref_node_fork;
 #endif
+#ifdef CONFIG_NUMA_BALANCING
+	int numa_scan_seq;
+	int numa_migrate_seq;
+	unsigned int numa_scan_period;
+	u64 node_stamp;			/* migration stamp  */
+	struct callback_head numa_work;
+#endif /* CONFIG_NUMA_BALANCING */
 	struct rcu_head rcu;
 
 	/*
@@ -1709,6 +1716,14 @@ struct task_struct {
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
 #define tsk_cpus_allowed(tsk) (&(tsk)->cpus_allowed)
+
+#ifdef CONFIG_NUMA_BALANCING
+extern void task_numa_fault(int node, int pages);
+#else
+static inline void task_numa_fault(int node, int pages)
+{
+}
+#endif
 
 static inline struct pid *task_pid(struct task_struct *task)
 {
@@ -2156,6 +2171,9 @@ extern void wake_up_idle_cpu(int cpu);
 static inline void wake_up_idle_cpu(int cpu) { }
 #endif
 
+extern unsigned int sysctl_numa_balancing_scan_period_min;
+extern unsigned int sysctl_numa_balancing_scan_period_max;
+extern unsigned int sysctl_numa_balancing_settle_count;
 extern unsigned int sysctl_sched_latency;
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_wakeup_granularity;
