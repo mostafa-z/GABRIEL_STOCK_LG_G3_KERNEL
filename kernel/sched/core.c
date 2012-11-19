@@ -8312,7 +8312,7 @@ static inline struct task_group *cgroup_tg(struct cgroup *cgrp)
 			    struct task_group, css);
 }
 
-static struct cgroup_subsys_state *cpu_cgroup_create(struct cgroup *cgrp)
+static struct cgroup_subsys_state *cpu_cgroup_css_alloc(struct cgroup *cgrp)
 {
 	struct task_group *tg, *parent;
 
@@ -8329,7 +8329,7 @@ static struct cgroup_subsys_state *cpu_cgroup_create(struct cgroup *cgrp)
 	return &tg->css;
 }
 
-static void cpu_cgroup_destroy(struct cgroup *cgrp)
+static void cpu_cgroup_css_free(struct cgroup *cgrp)
 {
 	struct task_group *tg = cgroup_tg(cgrp);
 
@@ -8741,8 +8741,8 @@ static struct cftype cpu_files[] = {
 
 struct cgroup_subsys cpu_cgroup_subsys = {
 	.name		= "cpu",
-	.create		= cpu_cgroup_create,
-	.destroy	= cpu_cgroup_destroy,
+	.css_alloc		= cpu_cgroup_css_alloc,
+	.css_free	= cpu_cgroup_css_free,
 	.can_attach	= cpu_cgroup_can_attach,
 	.attach		= cpu_cgroup_attach,
 	.allow_attach	= cpu_cgroup_allow_attach,
