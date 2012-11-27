@@ -74,6 +74,7 @@
 #include <linux/init_task.h>
 #include <linux/binfmts.h>
 #include <linux/cpufreq.h>
+#include <linux/context_tracking.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -2359,8 +2360,8 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
 #endif
 
+	context_tracking_task_switch(prev, next);
 	/* Here we just switch the register state and the stack. */
-	rcu_switch(prev, next);
 	switch_to(prev, next, prev);
 
 	barrier();
@@ -3827,6 +3828,21 @@ asmlinkage void __sched schedule(void)
 	__schedule();
 }
 EXPORT_SYMBOL(schedule);
+
+#ifdef CONFIG_CONTEXT_TRACKING
+asmlinkage void __sched schedule_user(void)
+{
+	/*
+	 * If we come here after a random call to set_need_resched(),
+	 * or we have been woken up remotely but the IPI has not yet arrived,
+	 * we haven't yet exited the RCU idle mode. Do it here manually until
+	 * we find a better solution.
+	 */
+	user_exit();
+	schedule();
+	user_enter();
+}
+#endif
 
 /**
  * schedule_preempt_disabled - called with preemption disabled
