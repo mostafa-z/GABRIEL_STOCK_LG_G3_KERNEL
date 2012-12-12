@@ -528,7 +528,7 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
 		/* hugetlb_file_setup applies strict accounting */
 		if (shmflg & SHM_NORESERVE)
 			acctflag = VM_NORESERVE;
-		file = hugetlb_file_setup(name, hugesize, acctflag,
+		file = hugetlb_file_setup(name, 0, size, acctflag,
 				  &shp->mlock_user, HUGETLB_SHMFS_INODE,
 				(shmflg >> SHM_HUGE_SHIFT) & SHM_HUGE_MASK);
 	} else {
