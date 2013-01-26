@@ -479,7 +479,7 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
 		}
 	}
 	return inode;
-}			
+}
 
 int proc_fill_super(struct super_block *s)
 {
