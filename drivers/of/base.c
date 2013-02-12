@@ -1304,7 +1304,7 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 				struct of_phandle_args *out_args)
 {
 	const __be32 *list, *list_end;
-	int size, cur_index = 0;
+	int rc = 0, size, cur_index = 0;
 	uint32_t count = 0;
 	struct device_node *node = NULL;
 	phandle phandle;
@@ -1317,6 +1317,7 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 
 	/* Loop over the phandles until all the requested entry is found */
 	while (list < list_end) {
+		rc = -EINVAL;
 		count = 0;
 
 		/*
@@ -1333,13 +1334,13 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 			if (!node) {
 				pr_err("%s: could not find phandle\n",
 					 np->full_name);
-				break;
+				goto err;
 			}
 			if (of_property_read_u32(node, cells_name, &count)) {
 				pr_err("%s: could not get %s for %s\n",
 					 np->full_name, cells_name,
 					 node->full_name);
-				break;
+				goto err;
 			}
 
 			/*
@@ -1349,7 +1350,7 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 			if (list + count > list_end) {
 				pr_err("%s: arguments longer than property\n",
 					 np->full_name);
-				break;
+				goto err;
 			}
 		}
 
@@ -1359,9 +1360,10 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 		 * index matches, then fill the out_args structure and return,
 		 * or return -ENOENT for an empty entry.
 		 */
+		rc = -ENOENT;
 		if (cur_index == index) {
 			if (!phandle)
-				return -ENOENT;
+				goto err;
 
 			if (out_args) {
 				int i;
@@ -1372,6 +1374,10 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 				for (i = 0; i < count; i++)
 					out_args->args[i] = be32_to_cpup(list++);
 			}
+
+			/* Found it! return success */
+			if (node)
+				of_node_put(node);
 			return 0;
 		}
 
@@ -1381,10 +1387,16 @@ int of_parse_phandle_with_args(const struct device_node *np, const char *list_na
 		cur_index++;
 	}
 
-	/* Loop exited without finding a valid entry; return an error */
+	/*
+	 * Unlock node before returning result; will be one of:
+	 * -ENOENT : index is for empty phandle
+	 * -EINVAL : parsing error on data
+	 */
+	rc = -ENOENT;
+ err:
 	if (node)
 		of_node_put(node);
-	return -EINVAL;
+	return rc;
 }
 EXPORT_SYMBOL(of_parse_phandle_with_args);
 
