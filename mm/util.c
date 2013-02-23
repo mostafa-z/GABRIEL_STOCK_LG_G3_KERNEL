@@ -8,6 +8,7 @@
 #include <linux/swapops.h>
 #include <linux/vmalloc.h>
 #include <linux/security.h>
+#include <linux/swap.h>
 #include <asm/uaccess.h>
 
 #include "internal.h"
@@ -415,6 +416,21 @@ struct address_space *page_mapping(struct page *page)
 		entry.val = page_private(page);
 		mapping = swap_address_space(entry);
 	} else
+#endif
+	if ((unsigned long)mapping & PAGE_MAPPING_ANON)
+		mapping = NULL;
+	return mapping;
+}
+
+struct address_space *page_mapping(struct page *page)
+{
+	struct address_space *mapping = page->mapping;
+
+	VM_BUG_ON(PageSlab(page));
+#ifdef CONFIG_SWAP
+	if (unlikely(PageSwapCache(page)))
+		mapping = &swapper_space;
+	else
 #endif
 	if ((unsigned long)mapping & PAGE_MAPPING_ANON)
 		mapping = NULL;
