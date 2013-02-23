@@ -156,7 +156,7 @@ enum {
 	SWP_FAST	= (1 << 9),	/* blkdev access is fast and cheap */
 };
 
-#define SWAP_CLUSTER_MAX 32
+#define SWAP_CLUSTER_MAX 32UL
 #define COMPACT_CLUSTER_MAX SWAP_CLUSTER_MAX
 
 /*
