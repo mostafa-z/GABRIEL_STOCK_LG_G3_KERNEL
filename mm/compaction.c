@@ -15,9 +15,13 @@
 #include <linux/sysctl.h>
 #include <linux/sysfs.h>
 #include <linux/balloon_compaction.h>
+<<<<<<< HEAD
 #ifdef CONFIG_STATE_NOTIFIER
 #include <linux/state_notifier.h>
 #endif
+=======
+#include <linux/page-isolation.h>
+>>>>>>> 2bec332... mm: remove MIGRATE_ISOLATE check in hotpath
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -222,7 +226,10 @@ static bool suitable_migration_target(struct page *page)
 	int migratetype = get_pageblock_migratetype(page);
 
 	/* Don't interfere with memory hot-remove or the min_free_kbytes blocks */
-	if (migratetype == MIGRATE_ISOLATE || migratetype == MIGRATE_RESERVE)
+	if (migratetype == MIGRATE_RESERVE)
+		return false;
+
+	if (is_migrate_isolate(migratetype))
 		return false;
 
 	/* If the page is a large free page, then allow migration */
