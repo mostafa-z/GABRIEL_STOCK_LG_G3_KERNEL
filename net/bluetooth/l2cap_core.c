@@ -951,13 +951,12 @@ struct sock *l2cap_find_sock_by_fixed_cid_and_dir(__le16 cid, bdaddr_t *src,
 						bdaddr_t *dst, int incoming)
 {
 	struct sock *sk = NULL, *sk1 = NULL;
-	struct hlist_node *node;
 
 	BT_DBG(" %d", incoming);
 
 	read_lock(&l2cap_sk_list.lock);
 
-	sk_for_each(sk, node, &l2cap_sk_list.head) {
+	sk_for_each(sk, &l2cap_sk_list.head) {
 
 		if (incoming && !l2cap_pi(sk)->incoming)
 			continue;
@@ -978,7 +977,7 @@ struct sock *l2cap_find_sock_by_fixed_cid_and_dir(__le16 cid, bdaddr_t *src,
 
 	read_unlock(&l2cap_sk_list.lock);
 
-	return node ? sk : sk1;
+	return sk ? sk : sk1;
 }
 
 /* Find socket with cid and source bdaddr.
@@ -987,11 +986,10 @@ struct sock *l2cap_find_sock_by_fixed_cid_and_dir(__le16 cid, bdaddr_t *src,
 static struct sock *l2cap_get_sock_by_scid(int state, __le16 cid, bdaddr_t *src)
 {
 	struct sock *sk = NULL, *sk1 = NULL;
-	struct hlist_node *node;
 
 	read_lock(&l2cap_sk_list.lock);
 
-	sk_for_each(sk, node, &l2cap_sk_list.head) {
+	sk_for_each(sk, &l2cap_sk_list.head) {
 		if (state && sk->sk_state != state)
 			continue;
 
@@ -1008,7 +1006,7 @@ static struct sock *l2cap_get_sock_by_scid(int state, __le16 cid, bdaddr_t *src)
 
 	read_unlock(&l2cap_sk_list.lock);
 
-	return node ? sk : sk1;
+	return sk ? sk : sk1;
 }
 
 static void l2cap_le_conn_ready(struct l2cap_conn *conn)
@@ -1241,11 +1239,10 @@ static inline void l2cap_chan_add(struct l2cap_conn *conn, struct sock *sk)
 static struct sock *l2cap_get_sock_by_psm(int state, __le16 psm, bdaddr_t *src)
 {
 	struct sock *sk = NULL, *sk1 = NULL;
-	struct hlist_node *node;
 
 	read_lock(&l2cap_sk_list.lock);
 
-	sk_for_each(sk, node, &l2cap_sk_list.head) {
+	sk_for_each(sk, &l2cap_sk_list.head) {
 		if (state && sk->sk_state != state)
 			continue;
 
@@ -1262,7 +1259,7 @@ static struct sock *l2cap_get_sock_by_psm(int state, __le16 psm, bdaddr_t *src)
 
 	read_unlock(&l2cap_sk_list.lock);
 
-	return node ? sk : sk1;
+	return sk ? sk : sk1;
 }
 
 int l2cap_do_connect(struct sock *sk)
@@ -7501,7 +7498,6 @@ static int l2cap_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 type)
 {
 	int exact = 0, lm1 = 0, lm2 = 0;
 	register struct sock *sk;
-	struct hlist_node *node;
 
 	if (type != ACL_LINK)
 		return 0;
@@ -7510,7 +7506,7 @@ static int l2cap_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 type)
 
 	/* Find listening sockets and check their link_mode */
 	read_lock(&l2cap_sk_list.lock);
-	sk_for_each(sk, node, &l2cap_sk_list.head) {
+	sk_for_each(sk, &l2cap_sk_list.head) {
 		if (sk->sk_state != BT_LISTEN)
 			continue;
 
@@ -7835,11 +7831,10 @@ static u16 l2cap_get_smallest_flushto(struct l2cap_chan_list *l)
 static int l2cap_debugfs_show(struct seq_file *f, void *p)
 {
 	struct sock *sk;
-	struct hlist_node *node;
 
 	read_lock_bh(&l2cap_sk_list.lock);
 
-	sk_for_each(sk, node, &l2cap_sk_list.head) {
+	sk_for_each(sk, &l2cap_sk_list.head) {
 		struct l2cap_pinfo *pi = l2cap_pi(sk);
 
 		seq_printf(f, "%s %s %d %d 0x%4.4x 0x%4.4x %d %d %d %d\n",

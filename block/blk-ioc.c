@@ -167,7 +167,6 @@ void put_io_context_active(struct io_context *ioc)
 {
 	unsigned long flags;
 	struct io_cq *icq;
-	struct hlist_node *n;
 
 	if (!atomic_dec_and_test(&ioc->active_ref)) {
 		put_io_context(ioc);
@@ -181,7 +180,7 @@ void put_io_context_active(struct io_context *ioc)
 	 */
 retry:
 	spin_lock_irqsave_nested(&ioc->lock, flags, 1);
-	hlist_for_each_entry(icq, n, &ioc->icq_list, ioc_node) {
+	hlist_for_each_entry(icq, &ioc->icq_list, ioc_node) {
 		if (icq->flags & ICQ_EXITED)
 			continue;
 		if (spin_trylock(icq->q->queue_lock)) {

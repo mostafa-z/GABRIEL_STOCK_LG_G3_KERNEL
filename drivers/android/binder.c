@@ -3053,7 +3053,6 @@ static int binder_release(struct inode *nodp, struct file *filp)
 
 static int binder_node_release(struct binder_node *node, int refs)
 {
-	struct hlist_node *pos;
 	struct binder_ref *ref;
 	int death = 0;
 
@@ -3072,7 +3071,7 @@ static int binder_node_release(struct binder_node *node, int refs)
 	node->local_weak_refs = 0;
 	hlist_add_head(&node->dead_node, &binder_dead_nodes);
 
-	hlist_for_each_entry(ref, pos, &node->refs, node_entry) {
+	hlist_for_each_entry(ref, &node->refs, node_entry) {
 		refs++;
 
 		if (!ref->death)
@@ -3360,12 +3359,11 @@ static void print_binder_thread(struct seq_file *m,
 static void print_binder_node(struct seq_file *m, struct binder_node *node)
 {
 	struct binder_ref *ref;
-	struct hlist_node *pos;
 	struct binder_work *w;
 	int count;
 
 	count = 0;
-	hlist_for_each_entry(ref, pos, &node->refs, node_entry)
+	hlist_for_each_entry(ref, &node->refs, node_entry)
 		count++;
 
 	seq_printf(m, "  node %d: u%016llx c%016llx hs %d hw %d ls %d lw %d is %d iw %d",
@@ -3375,7 +3373,7 @@ static void print_binder_node(struct seq_file *m, struct binder_node *node)
 		   node->internal_strong_refs, count);
 	if (count) {
 		seq_puts(m, " proc");
-		hlist_for_each_entry(ref, pos, &node->refs, node_entry)
+		hlist_for_each_entry(ref, &node->refs, node_entry)
 			seq_printf(m, " %d", ref->proc->pid);
 	}
 	seq_puts(m, "\n");
@@ -3573,7 +3571,6 @@ static void print_binder_proc_stats(struct seq_file *m,
 static int binder_state_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
-	struct hlist_node *pos;
 	struct binder_node *node;
 	int do_lock = !binder_debug_no_lock;
 
@@ -3584,10 +3581,10 @@ static int binder_state_show(struct seq_file *m, void *unused)
 
 	if (!hlist_empty(&binder_dead_nodes))
 		seq_puts(m, "dead nodes:\n");
-	hlist_for_each_entry(node, pos, &binder_dead_nodes, dead_node)
+	hlist_for_each_entry(node, &binder_dead_nodes, dead_node)
 		print_binder_node(m, node);
 
-	hlist_for_each_entry(proc, pos, &binder_procs, proc_node)
+	hlist_for_each_entry(proc, &binder_procs, proc_node)
 		print_binder_proc(m, proc, 1);
 	if (do_lock)
 		binder_unlock(__func__);
@@ -3597,7 +3594,6 @@ static int binder_state_show(struct seq_file *m, void *unused)
 static int binder_stats_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
-	struct hlist_node *pos;
 	int do_lock = !binder_debug_no_lock;
 
 	if (do_lock)
@@ -3607,7 +3603,7 @@ static int binder_stats_show(struct seq_file *m, void *unused)
 
 	print_binder_stats(m, "", &binder_stats);
 
-	hlist_for_each_entry(proc, pos, &binder_procs, proc_node)
+	hlist_for_each_entry(proc, &binder_procs, proc_node)
 		print_binder_proc_stats(m, proc);
 	if (do_lock)
 		binder_unlock(__func__);
@@ -3617,14 +3613,13 @@ static int binder_stats_show(struct seq_file *m, void *unused)
 static int binder_transactions_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *proc;
-	struct hlist_node *pos;
 	int do_lock = !binder_debug_no_lock;
 
 	if (do_lock)
 		binder_lock(__func__);
 
 	seq_puts(m, "binder transactions:\n");
-	hlist_for_each_entry(proc, pos, &binder_procs, proc_node)
+	hlist_for_each_entry(proc, &binder_procs, proc_node)
 		print_binder_proc(m, proc, 0);
 	if (do_lock)
 		binder_unlock(__func__);
@@ -3634,7 +3629,6 @@ static int binder_transactions_show(struct seq_file *m, void *unused)
 static int binder_proc_show(struct seq_file *m, void *unused)
 {
 	struct binder_proc *itr;
-	struct hlist_node *pos;
 	struct binder_proc *proc = m->private;
 	int do_lock = !binder_debug_no_lock;
 	bool valid_proc = false;
@@ -3642,7 +3636,7 @@ static int binder_proc_show(struct seq_file *m, void *unused)
 	if (do_lock)
 		binder_lock(__func__);
 
-	hlist_for_each_entry(itr, pos, &binder_procs, proc_node) {
+	hlist_for_each_entry(itr, &binder_procs, proc_node) {
 		if (itr == proc) {
 			valid_proc = true;
 			break;
