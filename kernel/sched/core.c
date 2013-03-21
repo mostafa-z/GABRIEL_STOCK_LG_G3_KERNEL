@@ -547,19 +547,6 @@ static bool set_nr_and_not_polling(struct task_struct *p)
 }
 #endif
 
-/*
- * resched_task - mark a task 'to be rescheduled now'.
- *
- * On UP this means the setting of the need_resched flag, on SMP it
- * might also involve a cross-CPU call to trigger the scheduler on
- * the target CPU.
- */
-#ifdef CONFIG_SMP
-
-#ifndef tsk_is_polling
-#define tsk_is_polling(t) 0
-#endif
-
 void resched_task(struct task_struct *p)
 {
 	int cpu;
