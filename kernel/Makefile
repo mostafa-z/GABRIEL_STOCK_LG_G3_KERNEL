@@ -22,6 +22,7 @@ obj-y += sched/
 obj-y += locking/
 obj-y += power/
 obj-y += rcu/
+obj-y += cpu/
 
 obj-$(CONFIG_FREEZER) += freezer.o
 obj-$(CONFIG_PROFILING) += profile.o
