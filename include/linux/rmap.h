@@ -206,7 +206,8 @@ int page_referenced_one(struct page *, struct vm_area_struct *,
 
 bool is_vma_temporary_stack(struct vm_area_struct *vma);
 
-int try_to_unmap(struct page *, enum ttu_flags flags);
+int try_to_unmap(struct page *, enum ttu_flags flags,
+			struct vm_area_struct *vma);
 int try_to_unmap_one(struct page *, struct vm_area_struct *,
 			unsigned long address, enum ttu_flags flags);
 
@@ -273,7 +274,7 @@ static inline int page_referenced(struct page *page, int is_locked,
 	return 0;
 }
 
-#define try_to_unmap(page, refs) SWAP_FAIL
+#define try_to_unmap(page, refs, vma) SWAP_FAIL
 
 static inline int page_mkclean(struct page *page)
 {
