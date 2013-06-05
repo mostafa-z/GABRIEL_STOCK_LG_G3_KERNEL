@@ -296,7 +296,7 @@ void flush_dcache_page(struct page *page)
 	mapping = PageSlab(page) ? NULL : page_mapping(page);
 
 	if (!cache_ops_need_broadcast() &&
-	    mapping && !mapping_mapped(mapping))
+	    mapping && !page_mapped(page))
 		clear_bit(PG_dcache_clean, &page->flags);
 	else {
 		__flush_dcache_page(mapping, page);
