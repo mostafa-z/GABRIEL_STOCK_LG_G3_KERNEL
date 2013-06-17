@@ -742,8 +742,6 @@ int tick_broadcast_oneshot_control(unsigned long reason)
 	} else {
 		if (cpumask_test_and_clear_cpu(cpu, tick_broadcast_oneshot_mask)) {
 			clockevents_set_mode(dev, CLOCK_EVT_MODE_ONESHOT);
-			if (dev->next_event.tv64 == KTIME_MAX)
-				goto out;
 			/*
 			 * The cpu which was handling the broadcast
 			 * timer marked this cpu in the broadcast
@@ -757,6 +755,11 @@ int tick_broadcast_oneshot_control(unsigned long reason)
 				       tick_broadcast_pending_mask))
 				goto out;
 
+			/*
+			 * Bail out if there is no next event.
+			 */
+			if (dev->next_event.tv64 == KTIME_MAX)
+				goto out;
 			/*
 			 * If the pending bit is not set, then we are
 			 * either the CPU handling the broadcast
