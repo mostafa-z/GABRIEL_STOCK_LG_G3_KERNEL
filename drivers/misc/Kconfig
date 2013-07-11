@@ -727,6 +727,14 @@ config UID_CPUTIME
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
+config FAN48632_BOOST
+	tristate "FAN48632 Boost IC driver"
+	default y
+	help
+	  The FAN48632 is a boost regulator desinged to provide a minimum
+	  output voltage from a single cell Li-Ion battery, even when the
+	  battery voltage is below system cutoff.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
