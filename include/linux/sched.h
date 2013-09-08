@@ -1014,7 +1014,10 @@ struct sched_domain {
 	u64	perf_lb_record;	/* performance balance record */
 
 	u64 last_update;
+
+	/* idle_balance() stats */
 	u64 max_newidle_lb_cost;
+	unsigned long next_decay_max_lb_cost;
 
 #ifdef CONFIG_SCHEDSTATS
 	/* load_balance() stats */
