@@ -17,7 +17,6 @@
 #include <linux/lockdep.h>
 #include <linux/atomic.h>
 #include <asm/processor.h>
-#include <linux/osq_lock.h>
 
 /*
  * Simple, straightforward mutexes with strict semantics:
