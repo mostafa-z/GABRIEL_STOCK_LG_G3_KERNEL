@@ -860,17 +860,9 @@ static void xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
 }
 
 /*
- * These functions extracts randomness from the "entropy pool", and
- * returns it in a buffer.
- *
- * The min parameter specifies the minimum amount we can pull before
- * failing to avoid races that defeat catastrophic reseeding while the
- * reserved parameter indicates how much entropy we must leave in the
- * pool after each pull to avoid starving other readers.
- *
- * Note: extract_entropy() assumes that .poolwords is a multiple of 16 words.
+ * This function decides how many bytes to actually take from the
+ * given pool, and also debits the entropy count accordingly.
  */
-
 static size_t account(struct entropy_store *r, size_t nbytes, int min,
 		      int reserved)
 {
@@ -918,6 +910,12 @@ retry:
 	return nbytes;
 }
 
+/*
+ * This function does the actual extraction for extract_entropy and
+ * extract_entropy_user.
+ *
+ * Note: we assume that .poolwords is a multiple of 16 words.
+ */
 static void extract_buf(struct entropy_store *r, __u8 *out)
 {
 	int i;
@@ -979,6 +977,15 @@ static void extract_buf(struct entropy_store *r, __u8 *out)
 	memzero_explicit(&hash, sizeof(hash));
 }
 
+/*
+ * This function extracts randomness from the "entropy pool", and
+ * returns it in a buffer.
+ *
+ * The min parameter specifies the minimum amount we can pull before
+ * failing to avoid races that defeat catastrophic reseeding while the
+ * reserved parameter indicates how much entropy we must leave in the
+ * pool after each pull to avoid starving other readers.
+ */
 static ssize_t extract_entropy(struct entropy_store *r, void *buf,
 				 size_t nbytes, int min, int reserved)
 {
@@ -1029,6 +1036,10 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
 	return ret;
 }
 
+/*
+ * This function extracts randomness from the "entropy pool", and
+ * returns it in a userspace buffer.
+ */
 static ssize_t extract_entropy_user(struct entropy_store *r, void __user *buf,
 				    size_t nbytes)
 {
