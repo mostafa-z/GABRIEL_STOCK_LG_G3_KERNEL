@@ -169,7 +169,6 @@ static inline bool policy_is_shared(struct cpufreq_policy *policy)
 #define CPUFREQ_NOTIFY			(2)
 #define CPUFREQ_START			(3)
 #define CPUFREQ_UPDATE_POLICY_CPU	(4)
-
 #define CPUFREQ_CREATE_POLICY	(5)
 #define CPUFREQ_REMOVE_POLICY	(6)
 
