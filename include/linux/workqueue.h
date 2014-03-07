@@ -183,17 +183,6 @@ struct execute_work {
 #define DECLARE_DEFERRABLE_WORK(n, f)				\
 	struct delayed_work n = __DEFERRABLE_WORK_INITIALIZER(n, f)
 
-/*
- * initialize a work item's function pointer
- */
-#define PREPARE_WORK(_work, _func)				\
-	do {							\
-		(_work)->func = (_func);			\
-	} while (0)
-
-#define PREPARE_DELAYED_WORK(_work, _func)			\
-	PREPARE_WORK(&(_work)->work, (_func))
-
 #ifdef CONFIG_DEBUG_OBJECTS_WORK
 extern void __init_work(struct work_struct *work, int onstack);
 extern void destroy_work_on_stack(struct work_struct *work);
@@ -223,7 +212,7 @@ static inline unsigned int work_static(struct work_struct *work) { return 0; }
 		(_work)->data = (atomic_long_t) WORK_DATA_INIT();	\
 		lockdep_init_map(&(_work)->lockdep_map, #_work, &__key, 0);\
 		INIT_LIST_HEAD(&(_work)->entry);			\
-		PREPARE_WORK((_work), (_func));				\
+		(_work)->func = (_func);				\
 	} while (0)
 #else
 #define __INIT_WORK(_work, _func, _onstack)				\
@@ -231,7 +220,7 @@ static inline unsigned int work_static(struct work_struct *work) { return 0; }
 		__init_work((_work), _onstack);				\
 		(_work)->data = (atomic_long_t) WORK_DATA_INIT();	\
 		INIT_LIST_HEAD(&(_work)->entry);			\
-		PREPARE_WORK((_work), (_func));				\
+		(_work)->func = (_func);				\
 	} while (0)
 #endif
 
