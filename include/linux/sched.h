@@ -2179,6 +2179,7 @@ extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
 extern unsigned int sysctl_sched_wake_to_idle;
 extern unsigned int sysctl_sched_ravg_window;
+extern unsigned int sysctl_sched_wakeup_load_threshold;
 
 int sched_rt_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
