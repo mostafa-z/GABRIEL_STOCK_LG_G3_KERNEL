@@ -2185,6 +2185,7 @@ extern __read_mostly int sysctl_sched_yield_sleep_threshold;
 extern const unsigned int sysctl_sched_yield_sleep_duration;
 extern const int sysctl_sched_yield_sleep_threshold;
 #endif
+extern unsigned int sysctl_sched_window_stats_policy;
 
 int sched_rt_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
