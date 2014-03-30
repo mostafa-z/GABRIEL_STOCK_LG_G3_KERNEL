@@ -4827,7 +4827,7 @@ int check_power_save_busiest_group(struct lb_env *env, struct sd_lb_stats *sds)
 
 static unsigned long default_scale_freq_power(struct sched_domain *sd, int cpu)
 {
-	return SCHED_POWER_SCALE;
+	return capacity_scale_cpu_freq(cpu);
 }
 
 unsigned long __weak arch_scale_freq_power(struct sched_domain *sd, int cpu)
@@ -4893,6 +4893,9 @@ static void update_cpu_power(struct sched_domain *sd, int cpu)
 	}
 
 	sdg->sgp->power_orig = power;
+
+	power *= capacity_scale_cpu_efficiency(cpu);
+	power >>= SCHED_POWER_SHIFT;
 
 	if (Larch_power)
 		power *= arch_scale_freq_power(sd, cpu);
