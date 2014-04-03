@@ -765,6 +765,9 @@ const char * const vmstat_text[] = {
 
 	"pgrotated",
 
+	"drop_pagecache",
+	"drop_slab",
+
 #ifdef CONFIG_MIGRATION
 	"pgmigrate_success",
 	"pgmigrate_fail",
