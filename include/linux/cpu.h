@@ -27,6 +27,18 @@ struct cpu {
 	struct device dev;
 };
 
+struct cpu_pstate_pwr {
+	unsigned int freq;
+	uint32_t power;
+};
+
+struct cpu_pwr_stats {
+	int cpu;
+	long temp;
+	struct cpu_pstate_pwr *ptable;
+	int len;
+};
+
 extern int register_cpu(struct cpu *cpu, int num);
 extern struct device *get_cpu_device(unsigned cpu);
 extern bool cpu_is_hotpluggable(unsigned cpu);
@@ -287,6 +299,9 @@ void arch_cpu_idle_dead(void);
 
 void cpu_startup_entry(enum cpuhp_state state);
 void cpu_idle(void);
+
+struct cpu_pwr_stats *get_cpu_pwr_stats(void);
+void trigger_cpu_pwr_stats_calc(void);
 
 #define IDLE_START 1
 #define IDLE_END 2
