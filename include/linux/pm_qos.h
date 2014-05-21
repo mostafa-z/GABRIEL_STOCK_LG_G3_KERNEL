@@ -86,6 +86,14 @@ enum pm_qos_req_type {
 #define PM_QOS_FLAG_NO_POWER_OFF	(1 << 0)
 #define PM_QOS_FLAG_REMOTE_WAKEUP	(1 << 1)
 
+enum pm_qos_req_type {
+	PM_QOS_REQ_ALL_CORES = 0,
+	PM_QOS_REQ_AFFINE_CORES,
+#ifdef CONFIG_SMP
+	PM_QOS_REQ_AFFINE_IRQ,
+#endif
+};
+
 struct pm_qos_request {
 	enum pm_qos_req_type type;
 	struct cpumask cpus_affine;
