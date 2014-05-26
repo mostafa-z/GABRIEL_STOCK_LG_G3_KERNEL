@@ -88,8 +88,10 @@
 #include "../workqueue_internal.h"
 #include "../smpboot.h"
 
+#ifdef TRACE_CRAP
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
+#endif
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 #ifdef CONFIG_ANDROID_BG_SCAN_MEM
@@ -810,8 +812,10 @@ static void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 	update_rq_clock(rq);
 	sched_info_queued(p);
 	p->sched_class->enqueue_task(rq, p, flags);
-	inc_cumulative_runnable_avg(rq, p);
+#ifdef TRACE_CRAP
 	trace_sched_enq_deq_task(p, 1);
+#endif
+	inc_cumulative_runnable_avg(rq, p);
 }
 
 static void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
@@ -819,8 +823,10 @@ static void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 	update_rq_clock(rq);
 	sched_info_dequeued(p);
 	p->sched_class->dequeue_task(rq, p, flags);
-	dec_cumulative_runnable_avg(rq, p);
+#ifdef TRACE_CRAP
 	trace_sched_enq_deq_task(p, 0);
+#endif
+	dec_cumulative_runnable_avg(rq, p);
 }
 
 void activate_task(struct rq *rq, struct task_struct *p, int flags)
@@ -1052,8 +1058,9 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 #endif
 #endif
 
+#ifdef TRACE_CRAP
 	trace_sched_migrate_task(p, new_cpu);
-
+#endif
 	if (task_cpu(p) != new_cpu) {
 		if (p->sched_class->migrate_task_rq)
 			p->sched_class->migrate_task_rq(p, new_cpu);
@@ -1126,7 +1133,9 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
 		 * just go back and repeat.
 		 */
 		rq = task_rq_lock(p, &flags);
+#ifdef TRACE_CRAP
 		trace_sched_wait_task(p);
+#endif
 		running = task_running(rq, p);
 		on_rq = p->on_rq;
 		ncsw = 0;
@@ -1513,7 +1522,9 @@ static void
 ttwu_do_wakeup(struct rq *rq, struct task_struct *p, int wake_flags)
 {
 	check_preempt_curr(rq, p, wake_flags);
+#ifdef TRACE_CRAP
 	trace_sched_wakeup(p, true);
+#endif
 
 	update_task_ravg(p, rq, 0);
 	p->state = TASK_RUNNING;
@@ -2112,7 +2123,9 @@ void wake_up_new_task(struct task_struct *p)
 	rq = __task_rq_lock(p);
 	activate_task(rq, p, 0);
 	p->on_rq = 1;
+#ifdef TRACE_CRAP
 	trace_sched_wakeup_new(p, true);
+#endif
 	check_preempt_curr(rq, p, WF_FORK);
 #ifdef CONFIG_SMP
 	if (p->sched_class->task_woken)
@@ -2199,7 +2212,9 @@ prepare_task_switch(struct rq *rq, struct task_struct *prev,
 	fire_sched_out_preempt_notifiers(prev, next);
 	prepare_lock_switch(rq, next);
 	prepare_arch_switch(next);
+#ifdef TRACE_CRAP
 	trace_sched_switch(prev, next);
+#endif
 }
 
 /**
@@ -4008,7 +4023,9 @@ void rt_mutex_setprio(struct task_struct *p, int prio)
 		goto out_unlock;
 	}
 
+#ifdef TRACE_CRAP
 	trace_sched_pi_setprio(p, prio);
+#endif
 	p->pi_top_task = rt_mutex_get_top_task(p);
 	oldprio = p->prio;
 	prev_class = p->sched_class;
