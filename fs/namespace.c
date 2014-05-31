@@ -2207,7 +2207,7 @@ long do_mount(const char *dev_name, const char *dir_name,
 	/* Check if this is an attempt to mark "/" as recursive-slave. */
 	if (strcmp(dir_name, "/") == 0 && flags == (MS_SLAVE | MS_REC)) {
 		static const char storage[] = "/storage";
-		static const char source[]  = "/mnt/shell/emulated";
+		static const char source[]  = "/mnt/shell/";
 		long res;
 
 		/* Mark /storage as recursive-slave instead. */
