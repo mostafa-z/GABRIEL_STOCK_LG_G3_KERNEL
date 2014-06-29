@@ -57,6 +57,7 @@ struct thread_struct {
 }
 
 #define cpu_relax() __vmyield()
+#define cpu_relax_lowlatency() cpu_relax()
 
 /*
  * "Unlazying all lazy status" occurs here.
