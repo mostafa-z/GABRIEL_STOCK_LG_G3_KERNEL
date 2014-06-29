@@ -17,6 +17,31 @@ struct mcs_spinlock {
 	int locked; /* 1 if lock acquired */
 };
 
+<<<<<<< HEAD
+=======
+#ifndef arch_mcs_spin_lock_contended
+/*
+ * Using smp_load_acquire() provides a memory barrier that ensures
+ * subsequent operations happen after the lock is acquired.
+ */
+#define arch_mcs_spin_lock_contended(l)					\
+do {									\
+	while (!(smp_load_acquire(l)))					\
+		cpu_relax_lowlatency();					\
+} while (0)
+#endif
+
+#ifndef arch_mcs_spin_unlock_contended
+/*
+ * smp_store_release() provides a memory barrier to ensure all
+ * operations in the critical section has been completed before
+ * unlocking.
+ */
+#define arch_mcs_spin_unlock_contended(l)				\
+	smp_store_release((l), 1)
+#endif
+
+>>>>>>> 816c62d... arch, locking: Ciao arch_mutex_cpu_relax()
 /*
  * Note: the smp_load_acquire/smp_store_release pair is not
  * sufficient to form a full memory barrier across
@@ -63,7 +88,7 @@ void mcs_spin_unlock(struct mcs_spinlock **lock, struct mcs_spinlock *node)
 			return;
 		/* Wait until the next pointer is set */
 		while (!(next = ACCESS_ONCE(node->next)))
-			arch_mutex_cpu_relax();
+			cpu_relax_lowlatency();
 	}
 	/*
 	 * Pass lock to next waiter.

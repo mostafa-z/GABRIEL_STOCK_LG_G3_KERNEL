@@ -92,6 +92,8 @@ unsigned long get_wchan(struct task_struct *p);
  */
 extern int kernel_thread(int (*fn)(void *), void *arg, unsigned long flags);
 
+#define cpu_relax_lowlatency()  
+
 #define task_pt_regs(p) \
 	((struct pt_regs *)(THREAD_START_SP + task_stack_page(p)) - 1)
 
