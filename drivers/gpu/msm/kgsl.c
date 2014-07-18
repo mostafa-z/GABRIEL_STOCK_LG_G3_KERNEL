@@ -2980,7 +2980,7 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	struct kgsl_dma_buf_meta *meta;
 	int ret;
 
-	if (!param->len)
+	if (!param->len || param->offset)
 		return -EINVAL;
 
 	meta = kzalloc(sizeof(*meta), GFP_KERNEL);
@@ -3149,7 +3149,7 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 		goto error_attach;
 
 	/* Adjust the returned value for a non 4k aligned offset */
-	param->gpuaddr = entry->memdesc.gpuaddr + (param->offset & ~PAGE_MASK);
+	param->gpuaddr = entry->memdesc.gpuaddr + (param->offset & PAGE_MASK);
 
 	KGSL_STATS_ADD(param->len, &kgsl_driver.stats.mapped,
 		&kgsl_driver.stats.mapped_max);
