@@ -1901,13 +1901,11 @@ static void __sched_fork(struct task_struct *p)
 	p->se.prev_sum_exec_runtime	= 0;
 	p->se.nr_migrations		= 0;
 	p->se.vruntime			= 0;
-	init_new_task_load(p);
 
 	INIT_LIST_HEAD(&p->se.group_node);
 
 #ifdef CONFIG_SMP
-	p->se.avg.runnable_avg_period = 0;
-	p->se.avg.runnable_avg_sum = 0;
+	init_new_task_load(p);
 	p->se.avg.decay_count = 0;
 #endif
 #ifdef CONFIG_SCHEDSTATS
@@ -8012,6 +8010,7 @@ void __init sched_init(void)
 		init_rq_hrtick(rq);
 		atomic_set(&rq->nr_iowait, 0);
 	}
+	set_hmp_defaults();
 
 	set_load_weight(&init_task);
 
