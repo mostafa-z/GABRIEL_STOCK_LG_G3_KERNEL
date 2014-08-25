@@ -6855,6 +6855,7 @@ static int load_balance(int this_cpu, struct rq *this_rq,
 		.loop_break	= sched_nr_migrate_break,
 		.cpus		= cpus,
 		.flags		= LBF_POWER_BAL,
+		.loop		= 0,
 	};
 
 	cpumask_copy(cpus, cpu_active_mask);
@@ -7225,6 +7226,7 @@ static int active_load_balance_cpu_stop(void *data)
 		.src_rq		= busiest_rq,
 		.idle		= CPU_IDLE,
 		.flags		= 0,
+		.loop		= 0,
 	};
 	bool moved = false;
 
