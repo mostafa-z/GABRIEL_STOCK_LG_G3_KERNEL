@@ -193,6 +193,12 @@ void cpuidle_uninstall_idle_handler(void)
 		initialized = 0;
 		cpuidle_kick_cpus();
 	}
+
+	/*
+	 * Make sure external observers (such as the scheduler)
+	 * are done looking at pointed idle states.
+	 */
+	synchronize_rcu();
 }
 
 /**
