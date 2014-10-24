@@ -25,6 +25,9 @@
 #include <linux/of.h>
 #include <mach/cpufreq.h>
 
+unsigned int poll_interval = 750;
+module_param(poll_interval, int, 0644);
+
 unsigned int temp_threshold = 70;
 module_param(temp_threshold, int, 0644);
 
@@ -132,7 +135,7 @@ static void check_temp(struct work_struct *work)
 	}
 
 reschedule:
-	queue_delayed_work(thermal_wq, &check_temp_work, msecs_to_jiffies(250));
+	queue_delayed_work(thermal_wq, &check_temp_work, msecs_to_jiffies(poll_interval));
 }
 
 static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
