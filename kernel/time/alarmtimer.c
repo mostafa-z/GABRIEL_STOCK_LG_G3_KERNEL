@@ -25,6 +25,7 @@
 #include <linux/posix-timers.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
+#include <linux/export.h>
 
 #include <mach/cpuidle.h>
 
