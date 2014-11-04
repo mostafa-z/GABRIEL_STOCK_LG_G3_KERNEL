@@ -134,6 +134,85 @@ static ssize_t show_crash_notes(struct device *dev, struct device_attribute *att
 static DEVICE_ATTR(crash_notes, 0400, show_crash_notes, NULL);
 #endif
 
+#ifdef CONFIG_SCHED_HMP
+static ssize_t show_sched_mostly_idle_load(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	ssize_t rc;
+	int cpunum;
+	int mostly_idle_pct;
+
+	cpunum = cpu->dev.id;
+
+	mostly_idle_pct = sched_get_cpu_mostly_idle_load(cpunum);
+
+	rc = snprintf(buf, PAGE_SIZE-2, "%d\n", mostly_idle_pct);
+
+	return rc;
+}
+
+static ssize_t __ref store_sched_mostly_idle_load(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	int cpuid = cpu->dev.id;
+	int mostly_idle_load, err;
+
+	err = kstrtoint(strstrip((char *)buf), 0, &mostly_idle_load);
+	if (err)
+		return err;
+
+	err = sched_set_cpu_mostly_idle_load(cpuid, mostly_idle_load);
+	if (err >= 0)
+		err = count;
+
+	return err;
+}
+
+static ssize_t show_sched_mostly_idle_nr_run(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	ssize_t rc;
+	int cpunum;
+	int mostly_idle_nr_run;
+
+	cpunum = cpu->dev.id;
+
+	mostly_idle_nr_run = sched_get_cpu_mostly_idle_nr_run(cpunum);
+
+	rc = snprintf(buf, PAGE_SIZE-2, "%d\n", mostly_idle_nr_run);
+
+	return rc;
+}
+
+static ssize_t __ref store_sched_mostly_idle_nr_run(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	int cpuid = cpu->dev.id;
+	int mostly_idle_nr_run, err;
+
+	err = kstrtoint(strstrip((char *)buf), 0, &mostly_idle_nr_run);
+	if (err)
+		return err;
+
+	err = sched_set_cpu_mostly_idle_nr_run(cpuid, mostly_idle_nr_run);
+	if (err >= 0)
+		err = count;
+
+	return err;
+}
+
+static DEVICE_ATTR(sched_mostly_idle_load, 0664, show_sched_mostly_idle_load,
+						store_sched_mostly_idle_load);
+static DEVICE_ATTR(sched_mostly_idle_nr_run, 0664,
+		show_sched_mostly_idle_nr_run, store_sched_mostly_idle_nr_run);
+#endif
+
 /*
  * Print cpu online, possible, present, and system maps
  */
@@ -257,6 +336,16 @@ int __cpuinit register_cpu(struct cpu *cpu, int num)
 	if (!error)
 		error = device_create_file(&cpu->dev, &dev_attr_crash_notes);
 #endif
+
+#ifdef CONFIG_SCHED_HMP
+	if (!error)
+		error = device_create_file(&cpu->dev,
+					 &dev_attr_sched_mostly_idle_load);
+	if (!error)
+		error = device_create_file(&cpu->dev,
+					 &dev_attr_sched_mostly_idle_nr_run);
+#endif
+
 	return error;
 }
 
