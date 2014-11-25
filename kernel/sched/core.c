@@ -1766,7 +1766,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 {
 	unsigned long flags;
 	int cpu, src_cpu, success = 0;
-	bool notify = false;
+	bool notify = 0;
 
 	/*
 	 * If we are going to wake up a thread waiting for CONDITION we
@@ -1831,10 +1831,12 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 stat:
 	ttwu_stat(p, cpu, wake_flags);
 
+	if (task_notify_on_migrate(p))
+		notify = 1;
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
-	if (task_notify_on_migrate(p)) {
+	if (notify) {
 		struct migration_notify_data mnd;
 
 		mnd.src_cpu = src_cpu;
