@@ -519,7 +519,7 @@ static unsigned int uksm_max_cpu_percentage;
 
 static int uksm_cpu_governor;
 
-static char *uksm_cpu_governor_str[4] = { "full", "medium", "low", "quiet" };
+static char *uksm_cpu_governor_str[4] = { "we're", "all", "the", "same" };
 
 struct uksm_cpu_preset_s {
 	int cpu_ratio[SCAN_LADDER_SIZE];
@@ -528,9 +528,9 @@ struct uksm_cpu_preset_s {
 };
 
 struct uksm_cpu_preset_s uksm_cpu_preset[4] = {
-	{ {20, 40, -2500, -10000}, {1000, 500, 200, 50}, 95},
-	{ {20, 30, -2500, -10000}, {1000, 500, 400, 100}, 50},
-	{ {10, 20, -5000, -10000}, {1500, 1000, 1000, 250}, 20},
+	{ {10, 20, 40, 75}, {2000, 1000, 1000, 1000}, 1},
+	{ {10, 20, 40, 75}, {2000, 1000, 1000, 1000}, 1},
+	{ {10, 20, 40, 75}, {2000, 1000, 1000, 1000}, 1},
 	{ {10, 20, 40, 75}, {2000, 1000, 1000, 1000}, 1},
 };
 
@@ -4616,7 +4616,7 @@ static int ksmd_should_run(void)
 static int uksm_scan_thread(void *nothing)
 {
 	set_freezable();
-	set_user_nice(current, 5);
+	set_user_nice(current, 12);
 
 	while (!kthread_should_stop()) {
 		mutex_lock(&uksm_thread_mutex);
@@ -5567,7 +5567,7 @@ static int __init uksm_init(void)
 	struct task_struct *uksm_thread;
 	int err;
 
-	uksm_sleep_jiffies = msecs_to_jiffies(100);
+	uksm_sleep_jiffies = msecs_to_jiffies(500);
 	uksm_sleep_saved = uksm_sleep_jiffies;
 
 	slot_tree_init();
