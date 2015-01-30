@@ -519,7 +519,7 @@ static unsigned int uksm_max_cpu_percentage;
 
 static int uksm_cpu_governor;
 
-static char *uksm_cpu_governor_str[1] = { "default" };
+static char *uksm_cpu_governor_str[3] = { "default", "HighCPU", "Battery", };
 
 struct uksm_cpu_preset_s {
 	int cpu_ratio[SCAN_LADDER_SIZE];
@@ -527,8 +527,10 @@ struct uksm_cpu_preset_s {
 	unsigned int max_cpu; /* percentage */
 };
 
-struct uksm_cpu_preset_s uksm_cpu_preset[1] = {
+struct uksm_cpu_preset_s uksm_cpu_preset[3] = {
 	{ {10, 20, -5000, -10000}, {1500, 1000, 1000, 250}, 10},
+	{ {10, 20, 40, 75}, {2000, 1000, 1000, 1000}, 20},
+	{ {10, 20, -5000, -10000}, {1500, 1000, 1000, 250}, 4},	
 };
 
 /* The default value for uksm_ema_page_time if it's not initialized */
