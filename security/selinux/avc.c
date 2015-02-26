@@ -1125,7 +1125,7 @@ inline int avc_has_perm_noaudit(u32 ssid, u32 tsid,
 
 	node = avc_lookup(ssid, tsid, tclass);
 	if (unlikely(!node))
-		node = avc_compute_av(ssid, tsid, tclass, avd, &ops_node);
+		node = avc_compute_av(ssid, tsid, tclass, avd);
 	else
 		memcpy(avd, &node->ae.avd, sizeof(*avd));
 
