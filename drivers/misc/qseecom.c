@@ -181,6 +181,7 @@ struct qseecom_control {
 	bool timer_running;
 	bool appsbl_qseecom_support;
 	unsigned int ce_opp_freq_hz;
+	bool appsbl_qseecom_support;
 };
 
 struct qseecom_client_handle {
