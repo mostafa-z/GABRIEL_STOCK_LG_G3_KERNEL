@@ -2553,8 +2553,10 @@ static void __update_min_max_capacity(void)
 
 static void update_min_max_capacity(void)
 {
+	unsigned long flags;
 	int i;
 
+	local_irq_save(flags);
 	for_each_possible_cpu(i)
 		raw_spin_lock(&cpu_rq(i)->lock);
 
@@ -2562,6 +2564,7 @@ static void update_min_max_capacity(void)
 
 	for_each_possible_cpu(i)
 		raw_spin_unlock(&cpu_rq(i)->lock);
+	local_irq_restore(flags);
 }
 
 /*
