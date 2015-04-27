@@ -559,13 +559,8 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	   will be wrongly overridden */
 	ret = __cpufreq_set_policy(policy, &new_policy);
 
-#ifdef CONFIG_ARCH_MSM8974
-#ifdef CONFIG_CPU_OVERCLOCK
-	if (policy->max > 2496000) policy->max = 2496000;
-#else
-	if (policy->max > 2265600) policy->max = 2265600;
-#endif
-#endif
+	if (policy->max > 2803200)
+		policy->max = 2803200;
 
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
