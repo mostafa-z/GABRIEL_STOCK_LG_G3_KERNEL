@@ -32,4 +32,5 @@ obj-$(CONFIG_RADIO_TAVARUA) += radio-tavarua.o
 obj-$(CONFIG_RADIO_IRIS) += radio-iris.o
 obj-$(CONFIG_RADIO_IRIS_TRANSPORT) += radio-iris-transport.o
 
+EXTRA_CFLAGS += -O2
 ccflags-y += -Isound
