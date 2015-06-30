@@ -74,10 +74,10 @@ static int mmc_queue_thread(void *d)
 
 	down(&mq->thread_sem);
 	do {
-		struct mmc_queue_req *tmp;
 		struct request *req = NULL;
 #ifdef CONFIG_MACH_LGE
-		unsigned int cmd_flags;
+		struct mmc_queue_req *tmp;
+		unsigned int cmd_flags = 0;
 #endif
 
 		spin_lock_irq(q->queue_lock);
@@ -193,7 +193,7 @@ static void mmc_urgent_request(struct request_queue *q)
 	struct mmc_context_info *cntx;
 
 	if (!mq) {
-		mmc_request(q);
+		mmc_request_fn(q);
 		return;
 	}
 	cntx = &mq->card->host->context_info;
@@ -213,7 +213,7 @@ static void mmc_urgent_request(struct request_queue *q)
 		wake_up_interruptible(&cntx->wait);
 	} else {
 		spin_unlock_irqrestore(&cntx->lock, flags);
-		mmc_request(q);
+		mmc_request_fn(q);
 	}
 }
 
