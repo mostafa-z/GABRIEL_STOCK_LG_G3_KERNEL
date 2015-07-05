@@ -2147,6 +2147,7 @@ int mmc_resume_bus(struct mmc_host *host)
 
 	mmc_bus_put(host);
 	pr_debug("%s: Deferred resume completed\n", mmc_hostname(host));
+
 	return 0;
 }
 
@@ -2744,7 +2745,7 @@ int mmc_can_reset(struct mmc_card *card)
 		    EXT_CSD_RST_N_ENABLED)
 #ifdef CONFIG_MACH_LGE
 		{
-            pr_info("%s: mmc, MMC_CAP_HW_RESET, rst_n_function=0x%02x\n", __func__, rst_n_function);
+			pr_info("%s: mmc, MMC_CAP_HW_RESET, rst_n_function=0x%02x\n", __func__, rst_n_function);
 			return 0;
 		}
 #else
@@ -3263,9 +3264,9 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
 	}
 
-	#ifdef CONFIG_MACH_LGE
-    pr_info("[LGE][MMC][%-18s( )] end, mmc%d, return %d\n", __func__, host->index, ret);
-	#endif
+#ifdef CONFIG_MACH_LGE
+	pr_info("[LGE][MMC][%-18s( )] end, mmc%d, return %d\n", __func__, host->index, ret);
+#endif
 
 	return ret;
 }
@@ -3317,7 +3318,7 @@ void mmc_rescan(struct work_struct *work)
 	* Adding Print
 	* 2014-01-16, B2-BSP-FS@lge.com
 	*/
-    pr_info("[LGE][MMC][%-18s( ) START!] mmc%d\n", __func__, host->index);
+	pr_info("[LGE][MMC][%-18s( ) START!] mmc%d\n", __func__, host->index);
 #endif
 
 	if (host->rescan_disable)
