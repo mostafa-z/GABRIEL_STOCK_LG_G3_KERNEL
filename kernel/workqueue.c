@@ -4086,7 +4086,6 @@ static void wq_unbind_fn(struct work_struct *work)
 	int cpu = smp_processor_id();
 	struct worker_pool *pool;
 	struct worker *worker;
-	struct hlist_node *pos;
 	int wi;
 
 	for_each_cpu_worker_pool(pool, cpu) {
@@ -4147,7 +4146,6 @@ static void wq_unbind_fn(struct work_struct *work)
  */
 static void rebind_workers(struct worker_pool *pool)
 {
-	struct hlist_node *pos;
 	struct worker *worker;
 	int wi;
 
