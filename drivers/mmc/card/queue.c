@@ -77,7 +77,6 @@ static int mmc_queue_thread(void *d)
 		struct request *req = NULL;
 #ifdef CONFIG_MACH_LGE
 		struct mmc_queue_req *tmp;
-		unsigned int cmd_flags = 0;
 #endif
 
 		spin_lock_irq(q->queue_lock);
