@@ -3374,7 +3374,7 @@ void mmc_rescan(struct work_struct *work)
  out:
 	/* only extend the wakelock, if suspend has not started yet */
 	if (extend_wakelock && !host->rescan_disable)
-		wake_lock_timeout(&host->detect_wake_lock, HZ / 2);
+		wake_lock_timeout(&host->detect_wake_lock, HZ / 4);
 
 #ifdef CONFIG_MACH_LGE
 /*
