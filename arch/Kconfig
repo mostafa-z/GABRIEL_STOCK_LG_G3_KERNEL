@@ -149,9 +149,6 @@ config HAVE_DMA_CONTIGUOUS
 config GENERIC_SMP_IDLE_THREAD
        bool
 
-config GENERIC_IDLE_LOOP
-       bool
-
 config HAVE_REGS_AND_STACK_ACCESS_API
 	bool
 	help
