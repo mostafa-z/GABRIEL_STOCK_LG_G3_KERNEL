@@ -16,14 +16,13 @@
 #include <linux/types.h>
 #include <linux/stddef.h>
 #include <linux/kernel.h>
+#include <linux/moduleparam.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/dcache.h>
 #include <linux/init.h>
 #include <linux/skbuff.h>
 #include <linux/percpu.h>
-#include <linux/list.h>
-#include <linux/moduleparam.h>
 #include <net/sock.h>
 #include <linux/un.h>
 #include <net/af_unix.h>
