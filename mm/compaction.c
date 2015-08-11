@@ -316,6 +316,8 @@ static unsigned long isolate_freepages_block(struct compact_control *cc,
 isolate_fail:
 		if (strict)
 			break;
+		else
+			continue;
 
 	}
 
@@ -468,6 +470,7 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 	isolate_mode_t mode = 0;
 	unsigned long uninitialized_var(flags);
 	struct lruvec *lruvec;
+	unsigned long flags;
 	bool locked = false;
 	struct page *page = NULL, *valid_page = NULL;
 
