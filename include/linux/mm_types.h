@@ -183,9 +183,6 @@ struct page {
 	struct stack_trace trace;
 	unsigned long trace_entries[8];
 #endif
-#ifdef CONFIG_NUMA_BALANCING
-	int _last_nid;
-#endif
 }
 /*
  * The struct page can be forced to be double word aligned so that atomic ops
@@ -430,14 +427,26 @@ struct mm_struct {
 #endif
 #ifdef CONFIG_NUMA_BALANCING
 	/*
-	 * numa_next_scan is the next time when the PTEs will me marked
-	 * pte_numa to gather statistics and migrate pages to new nodes
-	 * if necessary
+	 * numa_next_scan is the next time that the PTEs will be marked
+	 * pte_numa. NUMA hinting faults will gather statistics and migrate
+	 * pages to new nodes if necessary.
 	 */
 	unsigned long numa_next_scan;
 
+	/* numa_next_reset is when the PTE scanner period will be reset */
+	unsigned long numa_next_reset;
+
+	/* Restart point for scanning and setting pte_numa */
+	unsigned long numa_scan_offset;
+
 	/* numa_scan_seq prevents two threads setting pte_numa */
 	int numa_scan_seq;
+
+	/*
+	 * The first node a task was scheduled on. If a task runs on
+	 * a different node than Make PTE Scan Go Now.
+	 */
+	int first_nid;
 #endif
 #if defined(CONFIG_NUMA_BALANCING) || defined(CONFIG_COMPACTION)
 	/*
@@ -448,6 +457,10 @@ struct mm_struct {
 	bool tlb_flush_pending;
 #endif
 };
+
+/* first nid will either be a valid NID or one of these values */
+#define NUMA_PTE_SCAN_INIT	-1
+#define NUMA_PTE_SCAN_ACTIVE	-2
 
 static inline void mm_init_cpumask(struct mm_struct *mm)
 {
@@ -460,16 +473,6 @@ static inline void mm_init_cpumask(struct mm_struct *mm)
 static inline cpumask_t *mm_cpumask(struct mm_struct *mm)
 {
 	return mm->cpu_vm_mask_var;
-}
-
-
-/* Return the name for an anonymous mapping or NULL for a file-backed mapping */
-static inline const char __user *vma_get_anon_name(struct vm_area_struct *vma)
-{
-	if (vma->vm_file)
-		return NULL;
-
-	return vma->shared.anon_name;
 }
 
 #if defined(CONFIG_NUMA_BALANCING) || defined(CONFIG_COMPACTION)
@@ -512,5 +515,14 @@ static inline void clear_tlb_flush_pending(struct mm_struct *mm)
 {
 }
 #endif
+
+/* Return the name for an anonymous mapping or NULL for a file-backed mapping */
+static inline const char __user *vma_get_anon_name(struct vm_area_struct *vma)
+{
+	if (vma->vm_file)
+		return NULL;
+
+	return vma->shared.anon_name;
+}
 
 #endif /* _LINUX_MM_TYPES_H */
