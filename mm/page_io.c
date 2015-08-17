@@ -1,4 +1,3 @@
-
 /*
  *  linux/mm/page_io.c
  *
@@ -21,6 +20,7 @@
 #include <linux/buffer_head.h>
 #include <linux/writeback.h>
 #include <linux/frontswap.h>
+#include <linux/aio.h>
 #include <linux/blkdev.h>
 #include <linux/ratelimit.h>
 #include <asm/pgtable.h>
