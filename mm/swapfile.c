@@ -1568,14 +1568,18 @@ static void enable_swap_info(struct swap_info_struct *p, int prio,
 				unsigned long *frontswap_map)
 {
 	spin_lock(&swap_lock);
+	spin_lock(&p->lock);
 	_enable_swap_info(p, prio, swap_map, frontswap_map);
+	spin_unlock(&p->lock);
 	spin_unlock(&swap_lock);
 }
 
 static void reinsert_swap_info(struct swap_info_struct *p)
 {
 	spin_lock(&swap_lock);
+	spin_lock(&p->lock);
 	_enable_swap_info(p, p->prio, p->swap_map, frontswap_map_get(p));
+	spin_unlock(&p->lock);
 	spin_unlock(&swap_lock);
 }
 
@@ -1685,9 +1689,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 	swap_map = p->swap_map;
 	p->swap_map = NULL;
 	p->flags = 0;
-	frontswap_invalidate_area(type);
 	spin_unlock(&p->lock);
 	spin_unlock(&swap_lock);
+	frontswap_invalidate_area(type);
 	mutex_unlock(&swapon_mutex);
 	vfree(swap_map);
 	vfree(frontswap_map_get(p));
