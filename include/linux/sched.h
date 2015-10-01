@@ -1412,12 +1412,15 @@ struct task_struct {
 	struct sched_rt_entity rt;
 #ifdef CONFIG_SCHED_HMP
 	struct ravg ravg;
-	u64 run_start;
 	/*
 	 * 'init_load_pct' represents the initial task load assigned to children
 	 * of this task
 	 */
 	u32 init_load_pct;
+	u64 run_start;
+	u64 last_sleep_ts;
+	struct related_thread_group *grp;
+	struct list_head grp_list;
 #endif
 #ifdef CONFIG_CGROUP_SCHED
 	struct task_group *sched_task_group;
@@ -2202,6 +2205,8 @@ static inline void calc_load_exit_idle(void) { }
 
 extern int sched_set_wake_up_idle(struct task_struct *p, int wake_up_idle);
 extern u32 sched_get_wake_up_idle(struct task_struct *p);
+extern int sched_set_group_id(struct task_struct *p, unsigned int group_id);
+extern unsigned int sched_get_group_id(struct task_struct *p);
 
 #ifdef CONFIG_SCHED_HMP
 
