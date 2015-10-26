@@ -317,17 +317,13 @@ static void cpufreq_stats_free_sysfs(unsigned int cpu)
 {
 	struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
 
-	if (!policy)
+	if (!cpufreq_frequency_get_table(cpu))
 		return;
 
-	if (!cpufreq_frequency_get_table(cpu))
-		goto put_ref;
-
-	if (policy->cpu == cpu)
+	if (policy && policy->cpu == cpu)
 		sysfs_remove_group(&policy->kobj, &stats_attr_group);
-
-put_ref:
-	cpufreq_cpu_put(policy);
+	if (policy)
+		cpufreq_cpu_put(policy);
 }
 
 static void cpufreq_allstats_free(void)
