@@ -35,6 +35,11 @@
 
 #include "zram_drv.h"
 
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+static struct notifier_block notif;
+#endif
+
 /* Globals */
 static int zram_major;
 static struct zram *zram_devices;
@@ -107,6 +112,70 @@ static ssize_t disksize_show(struct device *dev,
 
 	return scnprintf(buf, PAGE_SIZE, "%llu\n", zram->disksize);
 }
+
+#ifdef CONFIG_STATE_NOTIFIER
+static int zram_compact(struct zram *zram)
+{
+	struct zram_meta *meta;
+	u64 val;
+	u64 data_size;
+
+	down_read(&zram->init_lock);
+	if (!init_done(zram)) {
+		up_read(&zram->init_lock);
+		pr_info("*** zram state notifier: zram is off ***\n");
+		return -EINVAL;
+	}
+
+	meta = zram->meta;
+
+	val = zs_get_total_pages(meta->mem_pool);
+	data_size = atomic64_read(&zram->stats.compr_data_size);
+	pr_info("%s mem_used_total = %llu\n", zram->disk->disk_name, val);
+	pr_info("%s compr_data_size = %llu\n", zram->disk->disk_name,
+		(unsigned long long)data_size);
+	pr_info("%s orig_data_size = %llu\n", zram->disk->disk_name,
+		(u64)atomic64_read(&zram->stats.pages_stored));
+
+	pr_info("*** zram state notifier: starting compaction ***\n");
+	zs_compact(meta->mem_pool);
+
+	val = zs_get_total_pages(meta->mem_pool);
+	data_size = atomic64_read(&zram->stats.compr_data_size);
+	pr_info("%s mem_used_total = %llu\n", zram->disk->disk_name, val);
+	pr_info("%s compr_data_size = %llu\n", zram->disk->disk_name,
+		(unsigned long long)data_size);
+	pr_info("%s orig_data_size = %llu\n", zram->disk->disk_name,
+		(u64)atomic64_read(&zram->stats.pages_stored));
+	pr_info("*** zram state notifier: finished compaction ***\n");
+
+	up_read(&zram->init_lock);
+
+	return 0;
+}
+
+static int zram_compact_cb(int id, void *ptr, void *data)
+{
+	zram_compact(ptr);
+	return 0;
+}
+
+static int state_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
+{
+	switch (event) {
+		case STATE_NOTIFIER_ACTIVE:
+			break;
+		case STATE_NOTIFIER_SUSPEND:
+			idr_for_each(&zram_index_idr, &zram_compact_cb, NULL);
+			break;
+		default:
+			break;
+	}
+
+	return NOTIFY_OK;
+}
+#endif
 
 static ssize_t initstate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1232,6 +1301,12 @@ static int __init zram_init(void)
 {
 	int ret, dev_id;
 
+#ifdef CONFIG_STATE_NOTIFIER
+	notif.notifier_call = state_notifier_callback;
+	if (state_register_client(&notif))
+		pr_warn("Failed to register State notifier callback\n");
+#endif
+
 	if (num_devices > max_num_devices) {
 		pr_warn("Invalid value for num_devices: %u\n",
 				num_devices);
@@ -1267,6 +1342,10 @@ out_error:
 
 static void __exit zram_exit(void)
 {
+#ifdef CONFIG_STATE_NOTIFIER
+	state_unregister_client(&notif);
+	notif.notifier_call = NULL;
+#endif
 	destroy_devices(num_devices);
 }
 
