@@ -2804,10 +2804,12 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	} else {
 		policy->min = new_policy->min;
 		policy->max = new_policy->max;
+		trace_cpu_frequency_limits(policy->max, policy->min, policy->cpu);
 	}
 #else
 	policy->min = new_policy->min;
 	policy->max = new_policy->max;
+	trace_cpu_frequency_limits(policy->max, policy->min, policy->cpu);
 #endif
 
 	pr_debug("new min and max freqs are %u - %u kHz\n",
