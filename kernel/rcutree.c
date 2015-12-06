@@ -2667,7 +2667,7 @@ void synchronize_sched_expedited(void)
 		s = atomic_long_read(&rsp->expedited_done);
 		if (ULONG_CMP_GE((ulong)s, (ulong)firstsnap)) {
 			/* ensure test happens before caller kfree */
-			smp_mb__before_atomic_inc(); /* ^^^ */
+			smp_mb__before_atomic(); /* ^^^ */
 			atomic_long_inc(&rsp->expedited_workdone1);
 			return;
 		}
@@ -2676,7 +2676,7 @@ void synchronize_sched_expedited(void)
 		if (trycount++ < 10) {
 			udelay(trycount * num_online_cpus());
 		} else {
-			synchronize_sched();
+			wait_rcu_gp(call_rcu_sched);
 			atomic_long_inc(&rsp->expedited_normal);
 			return;
 		}
@@ -2685,7 +2685,7 @@ void synchronize_sched_expedited(void)
 		s = atomic_long_read(&rsp->expedited_done);
 		if (ULONG_CMP_GE((ulong)s, (ulong)firstsnap)) {
 			/* ensure test happens before caller kfree */
-			smp_mb__before_atomic_inc(); /* ^^^ */
+			smp_mb__before_atomic(); /* ^^^ */
 			atomic_long_inc(&rsp->expedited_workdone2);
 			return;
 		}
@@ -2714,7 +2714,7 @@ void synchronize_sched_expedited(void)
 		s = atomic_long_read(&rsp->expedited_done);
 		if (ULONG_CMP_GE((ulong)s, (ulong)snap)) {
 			/* ensure test happens before caller kfree */
-			smp_mb__before_atomic_inc(); /* ^^^ */
+			smp_mb__before_atomic(); /* ^^^ */
 			atomic_long_inc(&rsp->expedited_done_lost);
 			break;
 		}
