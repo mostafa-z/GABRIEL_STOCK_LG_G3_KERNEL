@@ -1904,7 +1904,7 @@ static int selinux_binder_transfer_file(struct task_struct *from, struct task_st
 {
 	u32 sid = task_sid(to);
 	struct file_security_struct *fsec = file->f_security;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct inode_security_struct *isec = inode->i_security;
 	struct common_audit_data ad;
 	struct selinux_audit_data sad = {0,};
@@ -2099,7 +2099,7 @@ static int selinux_bprm_set_creds(struct linux_binprm *bprm)
 	struct inode_security_struct *isec;
 	struct common_audit_data ad;
 	struct selinux_audit_data sad = {0,};
-	struct inode *inode = bprm->file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(bprm->file);
 	int rc;
 
 	rc = cap_bprm_set_creds(bprm);
@@ -3084,7 +3084,7 @@ static void selinux_inode_getsecid(const struct inode *inode, u32 *secid)
 static int selinux_revalidate_file_permission(struct file *file, int mask)
 {
 	const struct cred *cred = current_cred();
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 
 	/* file_mask_to_av won't add FILE__WRITE if MAY_APPEND is set */
 	if ((file->f_flags & O_APPEND) && (mask & MAY_WRITE))
@@ -3096,7 +3096,7 @@ static int selinux_revalidate_file_permission(struct file *file, int mask)
 
 static int selinux_file_permission(struct file *file, int mask)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct file_security_struct *fsec = file->f_security;
 	struct inode_security_struct *isec = inode->i_security;
 	u32 sid = current_sid();
@@ -3137,7 +3137,7 @@ int ioctl_has_perm(const struct cred *cred, struct file *file,
 {
 	struct common_audit_data ad;
 	struct file_security_struct *fsec = file->f_security;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct inode_security_struct *isec = inode->i_security;
 	struct lsm_ioctlop_audit ioctl;
 	u32 ssid = cred_sid(cred);
@@ -3335,7 +3335,7 @@ static int selinux_file_fcntl(struct file *file, unsigned int cmd,
 
 	switch (cmd) {
 	case F_SETFL:
-		if (!file->f_path.dentry || !file->f_path.dentry->d_inode) {
+		if (!file->f_path.dentry || !file_inode(file)) {
 			err = -EINVAL;
 			break;
 		}
@@ -3362,7 +3362,7 @@ static int selinux_file_fcntl(struct file *file, unsigned int cmd,
 	case F_SETLK64:
 	case F_SETLKW64:
 #endif
-		if (!file->f_path.dentry || !file->f_path.dentry->d_inode) {
+		if (!file->f_path.dentry || !file_inode(file)) {
 			err = -EINVAL;
 			break;
 		}
