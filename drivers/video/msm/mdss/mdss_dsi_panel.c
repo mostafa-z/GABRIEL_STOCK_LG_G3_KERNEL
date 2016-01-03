@@ -1878,11 +1878,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,panel-charging-time-off-command", "qcom,mdss-dsi-on-command-state");
 #endif
 
+#if 0 /* Remove: mdss_dsi_parse_dcs_cmds: failed, key=qcom,mdss-dsi-panel-status-command */
 #ifndef CONFIG_MACH_MSM8974_DZNY
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->status_cmds,
 			"qcom,mdss-dsi-panel-status-command",
 				"qcom,mdss-dsi-panel-status-command-state");
-
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-status-value", &tmp);
 	ctrl_pdata->status_value = (!rc ? tmp : 0);
@@ -1897,6 +1897,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		else if (!strcmp(data, "reg_read"))
 			ctrl_pdata->status_mode = ESD_REG;
 	}
+#endif
 #endif
 
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
