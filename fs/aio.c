@@ -40,8 +40,6 @@
 #include <asm/kmap_types.h>
 #include <asm/uaccess.h>
 
-#include "read_write.h"
-
 #if DEBUG > 1
 #define dprintk		printk
 #else
@@ -1403,7 +1401,7 @@ static ssize_t aio_rw_vect_retry(struct kiocb *iocb)
 		rw_op = do_aio_read;
 		opcode = IOCB_CMD_PREADV;
 	} else {
-		rw_op = do_aio_write;
+		rw_op = file->f_op->aio_write;
 		opcode = IOCB_CMD_PWRITEV;
 	}
 
