@@ -152,23 +152,6 @@ int lge_get_battery_low(void);
 void __init lge_add_android_usb_devices(void);
 #endif
 
-#if defined(CONFIG_LCD_KCAL)
-/* LGE_CHANGE_S
-* change code for LCD KCAL
-* 2013-05-08, seojin.lee@lge.com
-*/
-struct kcal_data {
-		int red;
-		int green;
-		int blue;
-};
-
-struct kcal_platform_data {
-	int (*set_values) (int r, int g, int b);
-	int (*get_values) (int *r, int *g, int *b);
-	int (*refresh_display) (void);
-};
-#endif
 #if defined(CONFIG_PRE_SELF_DIAGNOSIS)
 int lge_pre_self_diagnosis(char *drv_bus_code, int func_code, char *dev_code, char *drv_code, int errno);
 int lge_pre_self_diagnosis_pass(char *dev_code);
@@ -242,13 +225,6 @@ void __init lge_add_lcd_misc_devices(void);
 int gpio_debug_init(void);
 void gpio_debug_print(void);
 
-#if defined(CONFIG_LCD_KCAL)
-/* LGE_CHANGE_S
-* change code for LCD KCAL
-* 2013-05-08, seojin.lee@lge.com
-*/
-void __init lge_add_lcd_kcal_devices(void);
-#endif
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 void __init lge_add_qfprom_devices(void);
 #endif
