@@ -33,6 +33,15 @@ modules.builtin
 *.patch
 *.gcno
 
+arch/arm/boot/compressed/piggy.lz4
+arch/arm/mach-msm/smd_rpc_sym.c
+drivers/thermal/intelli/.msm_thermal.o.cmd
+drivers/thermal/intelli/msm_thermal.o
+TOOLSET/
+WORKING_DIR/
+READY_KERNEL/
+TOOLCHAIN/
+
 #
 # Top-level generic files
 #
