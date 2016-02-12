@@ -56,6 +56,13 @@ config LGE_LION_DSV
 	bool "LION_DSV Power Management chip"
 	default n
 
+config FB_MSM_MDSS_KCAL_CTRL
+	depends on FB_MSM_MDSS
+	bool "MDSS color control"
+	---help---
+	  Enable sysfs for rgb/lut control for mdss-mdp display controllers
+	  in the MDSS sub-system.
+
 config T1_TOVIS_NT51021_WUXGA_VIDEO_PANEL
 	bool "MIPI TOVIS NT51021 WUXGA LCD Video Panel"
 	default n
