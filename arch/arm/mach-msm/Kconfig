@@ -1882,6 +1882,13 @@ config BRICKED_HOTPLUG
 	  This enables kernel based multi core control.
 	  (up/down hotplug based on load)
 
+config THUNDERPLUG_CONTROL
+	bool "Enable plugging down/up of cores based on load per core"
+	depends on SMP && HOTPLUG_CPU
+	default y
+	help
+	  This driver hotplugs cpu cores based on per-core load
+
 config MSM_CPUFREQ_LIMITER
 	tristate "MSM CPU frequency limiter"
 	default y
