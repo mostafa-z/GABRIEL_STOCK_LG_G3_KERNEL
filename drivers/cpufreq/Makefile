@@ -15,6 +15,7 @@ obj-$(CONFIG_CPU_FREQ_GOV_ONDEMAND)	+= cpufreq_ondemand.o cpufreq_ondemand_lg.o 
 obj-$(CONFIG_CPU_FREQ_GOV_CONSERVATIVE)	+= cpufreq_conservative.o
 obj-$(CONFIG_CPU_FREQ_GOV_COMMON)	+= cpufreq_governor.o
 obj-$(CONFIG_CPU_FREQ_GOV_CHILL)	+= cpufreq_chill.o
+obj-$(CONFIG_CPU_FREQ_GOV_DESPAIR)	+= cpufreq_despair.o
 obj-$(CONFIG_CPU_FREQ_GOV_ZZMOOVE)      += cpufreq_zzmoove.o
 obj-$(CONFIG_CPU_FREQ_GOV_INTERACTIVE)	+= cpufreq_interactive.o cpufreq_interactive_lg.o cpufreq_interactivex.o
 obj-$(CONFIG_CPU_FREQ_GOV_INTELLIDEMAND)	+= cpufreq_intellidemand.o
