@@ -2,3 +2,7 @@ config STATE_NOTIFIER
         bool "State Notifier"
 	default y
 
+config STATE_HELPER
+        bool "State Helper"
+	depends on STATE_NOTIFIER
+	default y
