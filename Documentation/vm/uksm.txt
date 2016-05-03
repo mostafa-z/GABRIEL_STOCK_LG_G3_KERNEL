@@ -56,3 +56,4 @@ ChangeLog:
 2012-10-13 UKSM 0.1.2.1 Bug fixes.
 2012-12-31 UKSM 0.1.2.2 Minor bug fixes
 2014-07-02 UKSM 0.1.2.3 Fix a " __this_cpu_read() in preemptible bug"
+2015-04-22 UKSM 0.1.2.4 Fix a race condition that can sometimes trigger anonying warnings.
