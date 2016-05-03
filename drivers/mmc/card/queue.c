@@ -28,6 +28,7 @@
 
 #define MMC_QUEUE_BOUNCESZ	65536
 
+#define MMC_REQ_SPECIAL_MASK	(REQ_DISCARD | REQ_FLUSH)
 
 /*
  * Based on benchmark tests the default num of requests to trigger the write
@@ -79,6 +80,7 @@ static int mmc_queue_thread(void *d)
 		struct request *req = NULL;
 #ifdef CONFIG_MACH_LGE
 		struct mmc_queue_req *tmp;
+		unsigned int cmd_flags = 0;
 #endif
 
 		spin_lock_irq(q->queue_lock);
@@ -116,7 +118,13 @@ static int mmc_queue_thread(void *d)
 			/*
 			 * Current request becomes previous request
 			 * and vice versa.
-			 */
+			 * In case of special requests, current request
+			 * has been finished. Do not assign it to previous
+			 * request.
+ 			 */
+			if (cmd_flags & MMC_REQ_SPECIAL_MASK)
+				mq->mqrq_cur->req = NULL;
+
 			mq->mqrq_prev->brq.mrq.data = NULL;
 			mq->mqrq_prev->req = NULL;
 			tmp = mq->mqrq_prev;
