@@ -168,10 +168,10 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 		return 0;
 
 	if (pressure >= VM_PRESSURE_ADAPTIVE_STOP) {
-		other_file = global_page_state(NR_FILE_PAGES) -
+		other_file = global_page_state(NR_FILE_PAGES) + zcache_pages() -
 			global_page_state(NR_SHMEM) -
 			global_page_state(NR_UNEVICTABLE) -
-			total_swapcache_pages;
+			total_swapcache_pages();
 		other_free = global_page_state(NR_FREE_PAGES);
 
 		atomic_set(&shift_adj, 1);
@@ -182,10 +182,10 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 		if (lowmem_minfree_size < array_size)
 			array_size = lowmem_minfree_size;
 
-		other_file = global_page_state(NR_FILE_PAGES) -
+		other_file = global_page_state(NR_FILE_PAGES) + zcache_pages() -
 			global_page_state(NR_SHMEM) -
 			global_page_state(NR_UNEVICTABLE) -
-			total_swapcache_pages;
+			total_swapcache_pages();
 
 		other_free = global_page_state(NR_FREE_PAGES);
 
