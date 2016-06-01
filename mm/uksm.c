@@ -5690,7 +5690,6 @@ static int __init uksm_init(void)
 	int err;
 
 	uksm_sleep_jiffies = msecs_to_jiffies(100);
-	uksm_sleep_saved = uksm_sleep_jiffies;
 
 	slot_tree_init();
 	init_scan_ladder();
