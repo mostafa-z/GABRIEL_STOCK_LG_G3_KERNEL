@@ -121,7 +121,7 @@ if [ -f arch/arm/boot/zImage-dtb ]
 then
 
 echo "copy modules"
-find . -name '*ko' -exec \cp '{}' $WD/package/system/lib/modules/ \;
+find . -name '*ko' -not -path "*TOOLCHAIN/*" -exec \cp '{}' $WD/package/system/lib/modules/ \;
 chmod 755 $WD/package/system/lib/modules/*
 
 	echo "Modules Copied" >> $WD/package/build_log;
