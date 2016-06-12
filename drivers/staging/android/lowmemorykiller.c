@@ -97,9 +97,9 @@ module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int,
 
 /*
  * This parameter controls the behaviour of LMK when vmpressure is in
- * the range of 90-94. Adaptive lmk triggers based on number of file
+ * the range of 85-95. Adaptive lmk triggers based on number of file
  * pages wrt vmpressure_file_min, when vmpressure is in the range of
- * 90-94. Usually this is a pseudo minfree value, higher than the
+ * 85-95. Usually this is a pseudo minfree value, higher than the
  * highest configured value in minfree array.
  */
 static int vmpressure_file_min = 66560; /* (65 * 1024) * 4 = 266 MB */
