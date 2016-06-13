@@ -6,3 +6,11 @@ config STATE_HELPER
         bool "State Helper"
 	depends on STATE_NOTIFIER
 	default y
+
+config MSM_HOTPLUG
+	bool "MSM hotplug driver"
+	depends on HOTPLUG_CPU
+	default y
+	help
+	  The MSM hotplug driver controls on-/offlining of additional cores based
+	  on current cpu load.
