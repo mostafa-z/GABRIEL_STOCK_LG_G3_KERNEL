@@ -359,7 +359,7 @@ config NEED_PER_CPU_KM
 
 config CLEANCACHE
 	bool "Enable cleancache driver to cache clean pages if tmem is present"
-	default n
+	default y
 	help
 	  Cleancache can be thought of as a page-granularity victim cache
 	  for clean pages that the kernel's pageframe replacement algorithm
@@ -383,7 +383,7 @@ config CLEANCACHE
 config FRONTSWAP
 	bool "Enable frontswap to cache swap pages if tmem is present"
 	depends on SWAP
-	default n
+	default y
 	help
 	  Frontswap is so named because it can be thought of as the opposite
 	  of a "backing" store for a swap device.  The data is stored into
@@ -399,7 +399,7 @@ config FRONTSWAP
 
 config ZBUD
 	tristate
-	default n
+	default y
 	help
 	  A special purpose allocator for storing compressed pages.
 	  It is designed to store up to two compressed pages per physical
@@ -451,7 +451,7 @@ config USE_USER_ACCESSIBLE_TIMERS
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
-	default n
+	default y
 	help
 	  It allows to reclaim pages of the process by /proc/pid/reclaim.
 
@@ -466,7 +466,7 @@ config PROCESS_RECLAIM
 
 config ZPOOL
 	tristate "Common API for compressed memory storage"
-	default n
+	default y
 	help
 	  Compressed memory storage API.  This allows using either zbud or
 	  zsmalloc.
@@ -476,7 +476,7 @@ config ZCACHE
        depends on CRYPTO && CLEANCACHE
        select CRYPTO_LZO
        select ZBUD
-       default n
+       default y
        help
          A compressed cache for file pages.
          It takes active file pages that are in the process of being reclaimed
@@ -490,7 +490,7 @@ config ZCACHE
 config ZSMALLOC
 	bool "Memory allocator for compressed pages"
 	depends on MMU
-	default n
+	default y
 	help
 	  zsmalloc is a slab-based memory allocator designed to store
 	  compressed RAM pages.  zsmalloc uses virtual memory mapping
