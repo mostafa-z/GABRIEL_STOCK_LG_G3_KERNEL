@@ -19,7 +19,10 @@
 #include <linux/io.h>
 #include <linux/ftrace.h>
 #include <linux/msm_adreno_devfreq.h>
-#include <linux/powersuspend.h>
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+static struct notifier_block adreno_tz_state_notif;
+#endif
 #include <mach/scm.h>
 #include "governor.h"
 
@@ -61,6 +64,9 @@ static DEFINE_SPINLOCK(tz_lock);
 
 static unsigned int tz_target = TARGET;
 static unsigned int tz_cap = CAP;
+
+/* Boolean to detect if panel has gone off */
+static bool power_suspended = false;
 
 /* Boolean to detect if pm has entered suspend mode */
 static bool suspended = false;
@@ -488,8 +494,31 @@ static struct devfreq_governor msm_adreno_tz = {
 	.event_handler = tz_handler,
 };
 
+#ifdef CONFIG_STATE_NOTIFIER
+static int state_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
+{
+	switch (event) {
+		case STATE_NOTIFIER_ACTIVE:
+			power_suspended = false;
+			break;
+		case STATE_NOTIFIER_SUSPEND:
+			power_suspended = true;
+			break;
+		default:
+			break;
+	}
+	return NOTIFY_OK;
+}
+#endif
 static int __init msm_adreno_tz_init(void)
 {
+#ifdef CONFIG_STATE_NOTIFIER
+	adreno_tz_state_notif.notifier_call = state_notifier_callback;
+	if (state_register_client(&adreno_tz_state_notif))
+		pr_err("%s: Failed to register State notifier callback\n",
+			__func__);
+#endif
 	return devfreq_add_governor(&msm_adreno_tz);
 }
 subsys_initcall(msm_adreno_tz_init);
@@ -497,6 +526,11 @@ subsys_initcall(msm_adreno_tz_init);
 static void __exit msm_adreno_tz_exit(void)
 {
 	int ret;
+
+#ifdef CONFIG_STATE_NOTIFIER
+	state_unregister_client(&adreno_tz_state_notif);
+	adreno_tz_state_notif.notifier_call = NULL;
+#endif
 	ret = devfreq_remove_governor(&msm_adreno_tz);
 	if (ret)
 		pr_err(TAG "failed to remove governor %d\n", ret);
