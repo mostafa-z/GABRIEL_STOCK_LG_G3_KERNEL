@@ -109,6 +109,9 @@ enum pageflags {
 	PG_compound_lock,
 #endif
 	PG_readahead,		/* page in a readahead window */
+#ifdef CONFIG_ZCACHE
+	PG_was_active,
+#endif
 #ifdef CONFIG_KSM_CHECK_PAGE
 	PG_ksm_scan0,		/* page has been scanned by even KSM cycle */
 #endif
@@ -218,6 +221,11 @@ PAGEFLAG(Reserved, reserved) __CLEARPAGEFLAG(Reserved, reserved)
 PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
 
 __PAGEFLAG(SlobFree, slob_free)
+#ifdef CONFIG_ZCACHE
+PAGEFLAG(WasActive, was_active)
+#else
+PAGEFLAG_FALSE(WasActive)
+#endif
 #ifdef CONFIG_KSM_CHECK_PAGE
 CLEARPAGEFLAG(KsmScan0, ksm_scan0) TESTSETFLAG(KsmScan0, ksm_scan0)
 CLEARPAGEFLAG(KsmScan1, ksm_scan1) TESTSETFLAG(KsmScan1, ksm_scan1)
