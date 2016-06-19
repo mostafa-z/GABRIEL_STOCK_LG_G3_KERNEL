@@ -1275,14 +1275,6 @@ static inline void f2fs_put_dnode(struct dnode_of_data *dn)
 	dn->inode_page = NULL;
 }
 
-static inline void kvfree(const void *addr)
-{
-	if (is_vmalloc_addr(addr))
-		vfree(addr);
-	else
-		kfree(addr);
-}
-
 static inline struct kmem_cache *f2fs_kmem_cache_create(const char *name,
 					size_t size)
 {
