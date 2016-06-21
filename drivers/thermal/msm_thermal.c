@@ -52,7 +52,7 @@
 #define BYTES_PER_FUSE_ROW  8
 #define MAX_EFUSE_VALUE  16
 #define THERM_SECURE_BITE_CMD 8
-#define CORE_MAX_FREQ 2880000
+#define CORE_MAX_FREQ 2457600
 
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
