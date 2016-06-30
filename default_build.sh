@@ -115,6 +115,12 @@ CLEANUP()
 {
 	make clean mrproper && git clean -f;
 
+# force regeneration of .dtb and zImage files for every compile
+	rm -f arch/arm/boot/*.dtb
+	rm -f arch/arm/boot/*.cmd
+	rm -f arch/arm/boot/zImage
+	rm -f arch/arm/boot/Image
+
 ### cleanup files creted previously
 
 	for i in $(find "$KD"/ -name "*.ko"); do
