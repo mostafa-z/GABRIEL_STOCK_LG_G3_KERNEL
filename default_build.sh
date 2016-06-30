@@ -61,10 +61,8 @@ NR_CPUS()
 	if [ "$NR_CPUS" -le "2" ]; then
 		NR_CPUS=4;
 		echo "Building kernel with 4 CPU threads";
-		echo ""
 	else
 		echo -e "\e[1;44mBuilding kernel with $NR_CPUS CPU threads\e[m"
-		echo ""
 	fi;
 }
 
@@ -98,6 +96,9 @@ LOG_CHECK()
 	grep fail compile.log
 	grep no compile.log
 	echo -e $COLOR_NEUTRAL
+# back to main directory
+	cd ..
+	cd ..
 
 	echo -e "***************************************************"
 }
@@ -150,18 +151,18 @@ CLEANUP()
 
 REBUILD()
 {
+clear
 FILENAME=($NAME-$(date +"[%d-%m-%y]")-$MODEL);
 FILENAME;
 NR_CPUS;
-CLEANUP;
 
-	clear
 	echo -e "\e[41mREBUILD\e[m"
 	echo ""
-	echo -e $COLOR_GREEN"\nGit Branch is at : "$GIT_BRANCH $COLOR_NEUTRAL
+	echo -e $COLOR_GREEN"Git Branch is at : "$GIT_BRANCH $COLOR_NEUTRAL
 	echo ""
 	sleep 3
 
+	touch WORKING_DIR/package/compile.log
 	echo -e "\n***************************************************" > $LOG
 	echo -e "\nGIT branch is at : "$GIT_BRANCH >> $LOG
 	echo "CPU : compile with "$NR_CPUS"-way multitask processing" >> $LOG
@@ -182,15 +183,14 @@ LOG_CHECK;
 
 REBUILD_NCONF()
 {
+clear
 FILENAME=($NAME-$(date +"[%y-%m-%d]")-$MODEL);
 FILENAME;
 NR_CPUS;
-CLEANUP;
 
-	clear
 	echo -e "\e[41mREBUILD\e[m"
 	echo -e ""
-	echo -e $COLOR_GREEN"\nGit Branch is at : "$GIT_BRANCH $COLOR_NEUTRAL
+	echo -e $COLOR_GREEN"Git Branch is at : "$GIT_BRANCH $COLOR_NEUTRAL
 	echo -e ""
 	sleep 3
 
@@ -312,7 +312,7 @@ else
 
 ### THANKS GOD
 
-fi
+fi;
 }
 
 echo "Select Toolchain ... ";
