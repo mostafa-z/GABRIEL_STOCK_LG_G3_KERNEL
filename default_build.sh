@@ -102,14 +102,6 @@ LOG_CHECK()
 	echo -e "***************************************************"
 }
 
-# copy ramdisk-mod
-RAMDISK_CP()
-{
-# get out from package folder
-cd ..
-	\cp -r ramdisk/* $RAMDISK/ramdisk/
-}
-
 # refresh for new build
 CLEANUP()
 {
@@ -120,6 +112,12 @@ CLEANUP()
 	rm -f arch/arm/boot/*.cmd
 	rm -f arch/arm/boot/zImage
 	rm -f arch/arm/boot/Image
+
+	if [ -d $WD/temp ]; then
+		rm -rf $WD/temp/*
+	else
+		mkdir $WD/temp
+	fi;
 
 ### cleanup files creted previously
 
@@ -226,10 +224,17 @@ CONTINUE_BUILD()
 
 POST_BUILD()
 {
-	echo "checking for compiled kernel..."
+	echo -e "\nbuild for :" $RAMDISK
+	echo -e "\nchecking for compiled kernel..."
 	echo ""
 if [ -f arch/arm/boot/zImage-dtb ]
 	then
+
+	if [ -d $WD/package/system/lib/modules ]; then
+		rm -rf $WD/package/system/lib/modules/*
+	else
+		mkdir $WD/package/system/lib/modules
+	fi;
 
 	find . -name '*ko' -not -path "*TOOLCHAIN/*" -exec \cp '{}' $WD/package/system/lib/modules/ \;
 	chmod 755 $WD/package/system/lib/modules/*
@@ -250,14 +255,18 @@ if [ -f arch/arm/boot/zImage-dtb ]
 		echo -e "\nDevice Tree : Failed !" >> $LOG
 	fi;
 
+	# copy all selected ramdisk files to temp folder
+	\cp -r $WD/$RAMDISK/* $WD/temp
+	\cp -r $WD/ramdisk/* $WD/temp
+
 	echo "copy zImage-dtb and dt.img"
 	echo ""
-	\cp -v $BOOT/zImage-dtb $WD/$RAMDISK/ >> $LOG
-	\cp -v $BOOT/dt.img $WD/$RAMDISK/ >> $LOG
+	\cp -v $BOOT/zImage-dtb $WD/temp/ >> $LOG
+	\cp -v $BOOT/dt.img $WD/temp/ >> $LOG
 
 	echo "creating boot.img"
 	echo ""
-	./mkboot $WD/$RAMDISK $WD/boot.img >> $LOG
+	./mkboot $WD/temp $WD/boot.img >> $LOG
 
 	echo -e "\nBumping"
 	echo ""
@@ -268,11 +277,11 @@ if [ -f arch/arm/boot/zImage-dtb ]
 	echo "copy bumped image"
 	\cp -v $WD/boot_bumped.img $WD/package/boot.img >> $LOG
 
-	zImage=(stat -c%s $WD/$RAMDISK/zImage-dtb);
+	zImage=(stat -c%s $WD/temp/zImage-dtb);
 	boot_img=(stat -c%s $WD/boot.img);
 	echo ""
 	echo "zImage size (bytes):"
-	stat -c%s $WD/$RAMDISK/zImage-dtb
+	stat -c%s $WD/temp/zImage-dtb
 	echo -n ""
 	echo "boot.img size (bytes):"
 	stat -c%s $WD/boot.img
@@ -353,7 +362,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D850
 			RAMDISK=D850
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"D851")
 			CLEANUP;
@@ -361,7 +369,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D851
 			RAMDISK=D851
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"D852")
 			CLEANUP;
@@ -369,7 +376,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D852
 			RAMDISK=D852
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"D855")
 			CLEANUP;
@@ -377,7 +383,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D855
 			RAMDISK=D855
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"VS985")
 			CLEANUP;
@@ -385,7 +390,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=VS985
 			RAMDISK=VS985
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"LS990")
 			CLEANUP;
@@ -393,7 +397,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=LS990
 			RAMDISK=LS990
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"ALL")
 			echo "starting build of D850 in 3"
@@ -407,7 +410,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D850
 			RAMDISK=D850
 			REBUILD;
-			RAMDISK_CP;
 			echo "D850 is ready!"
 			echo "starting build of D851 in 3"
 			sleep 1;
@@ -420,7 +422,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D851
 			RAMDISK=D851
 			REBUILD;
-			RAMDISK_CP;
 			echo "D851 is ready!"
 			echo "starting build of D852 in 3"
 			sleep 1;
@@ -433,7 +434,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D852
 			RAMDISK=D852
 			REBUILD;
-			RAMDISK_CP;
 			echo "D852 is ready!"
 			echo "starting build of D855 in 3"
 			sleep 1;
@@ -446,7 +446,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=D855
 			RAMDISK=D855
 			REBUILD;
-			RAMDISK_CP;
 			echo "D855 is ready!"
 			echo "starting build of VS985 in 3"
 			sleep 1;
@@ -459,7 +458,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=VS985
 			RAMDISK=VS985
 			REBUILD;
-			RAMDISK_CP;
 			echo "VS985 is ready!"
 			echo "starting build of LS990 in 3"
 			sleep 1;
@@ -472,7 +470,6 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			MODEL=LS990
 			RAMDISK=LS990
 			REBUILD;
-			RAMDISK_CP;
 			echo "LS990 is ready!"
 			break;;
 		"CONTINUE_BUILD")
@@ -482,13 +479,11 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 CONTINUE_BUILD D855_STOCK_DEF D
 			CUSTOM_DEF=$STOCK_DEF 
 			RAMDISK=D855
 			REBUILD;
-			RAMDISK_CP;
 			break;;
 		"D855_NCONF")
 			CUSTOM_DEF=$STOCK_DEF
 			RAMDISK=D855
 			REBUILD_NCONF;
-			RAMDISK_CP;
 			break;;
 	esac;
 done;
