@@ -684,8 +684,10 @@ static enum msm_pm_time_stats_id msm_pm_power_collapse(bool from_idle)
 	if ((!from_idle && cpu_online(cpu))
 			|| (MSM_PM_DEBUG_IDLE_CLK & msm_pm_debug_mask))
 
+#if 0
 #ifdef CONFIG_HW_PERF_EVENTS
 		clock_debug_print_enabled();
+#endif
 #endif
 
 	avsdscr = avs_get_avsdscr();
