@@ -1270,7 +1270,7 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 	reclaim_walk.mm = mm;
 	reclaim_walk.pmd_entry = reclaim_pte_range;
 
-	rp.nr_to_reclaim = INT_MAX;
+	rp.nr_to_reclaim = ~0;
 	rp.nr_reclaimed = 0;
 	reclaim_walk.private = &rp;
 
