@@ -173,7 +173,10 @@ exuberant()
 	--regex-c++='/SETPAGEFLAG\(([^,)]*).*/SetPage\1/'		\
 	--regex-c++='/__SETPAGEFLAG\(([^,)]*).*/__SetPage\1/'		\
 	--regex-c++='/TESTCLEARFLAG\(([^,)]*).*/TestClearPage\1/'	\
-	--regex-c++='/__TESTCLEARFLAG\(([^,)]*).*/TestClearPage\1/'	\
+	--regex-c++='/__TESTCLEARFLAG_FALSE\(([^,)]*).*/__TestClearPage\1/'\
+	--regex-c++='/TASK_PFA_TEST\([^,]*,\s*([^)]*)\)/task_\1/'	\
+	--regex-c++='/TASK_PFA_SET\([^,]*,\s*([^)]*)\)/task_set_\1/'	\
+	--regex-c++='/TASK_PFA_CLEAR\([^,]*,\s*([^)]*)\)/task_clear_\1/'
 	--regex-c++='/CLEARPAGEFLAG\(([^,)]*).*/ClearPage\1/'		\
 	--regex-c++='/__CLEARPAGEFLAG\(([^,)]*).*/__ClearPage\1/'	\
 	--regex-c++='/__PAGEFLAG\(([^,)]*).*/__SetPage\1/'		\
@@ -231,7 +234,10 @@ emacs()
 	--regex='/SETPAGEFLAG(\([^,)]*\).*/SetPage\1/'		\
 	--regex='/__SETPAGEFLAG(\([^,)]*\).*/__SetPage\1/'	\
 	--regex='/TESTCLEARFLAG(\([^,)]*\).*/TestClearPage\1/'	\
-	--regex='/__TESTCLEARFLAG(\([^,)]*\).*/TestClearPage\1/'	\
+	--regex='/__TESTCLEARFLAG_FALSE\(([^,)]*).*/__TestClearPage\1/'\
+	--regex='/TASK_PFA_TEST\([^,]*,\s*([^)]*)\)/task_\1/'		\
+	--regex='/TASK_PFA_SET\([^,]*,\s*([^)]*)\)/task_set_\1/'	\
+	--regex='/TASK_PFA_CLEAR\([^,]*,\s*([^)]*)\)/task_clear_\1/'
 	--regex='/CLEARPAGEFLAG(\([^,)]*\).*/ClearPage\1/'	\
 	--regex='/__CLEARPAGEFLAG(\([^,)]*\).*/__ClearPage\1/'	\
 	--regex='/__PAGEFLAG(\([^,)]*\).*/__SetPage\1/'		\

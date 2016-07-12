@@ -1094,9 +1094,9 @@ static int aio_read_evt(struct kioctx *ioctx, struct io_event *ent)
 	spin_unlock(&info->ring_lock);
 
 out:
-	kunmap_atomic(ring);
 	dprintk("leaving aio_read_evt: %d  h%lu t%lu\n", ret,
 		 (unsigned long)ring->head, (unsigned long)ring->tail);
+	kunmap_atomic(ring);
 	return ret;
 }
 
@@ -1453,6 +1453,10 @@ static ssize_t aio_setup_vectored_rw(int type, struct kiocb *kiocb, bool compat)
 				(struct iovec __user *)kiocb->ki_buf,
 				kiocb->ki_nbytes, 1, &kiocb->ki_inline_vec,
 				&kiocb->ki_iovec, 1);
+	if (ret < 0)
+		goto out;
+
+	ret = rw_verify_area(type, kiocb->ki_filp, &kiocb->ki_pos, ret);
 	if (ret < 0)
 		goto out;
 

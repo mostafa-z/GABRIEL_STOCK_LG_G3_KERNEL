@@ -481,6 +481,7 @@ static void f_midi_unbind(struct usb_configuration *c, struct usb_function *f)
 #endif
 
 	usb_free_descriptors(f->descriptors);
+	usb_free_descriptors(f->hs_descriptors);
 #ifndef CONFIG_USB_G_LGE_ANDROID
 	kfree(midi);
 #endif
