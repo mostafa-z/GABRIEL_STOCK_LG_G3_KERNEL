@@ -35,7 +35,7 @@
 #ifdef CONFIG_LGE_PM_CPU_FREQ_GOV_LCDOFF
 #include "../../drivers/video/msm/mdss/mdss_fb.h"
 #endif
-#define CREATE_TRACE_POINTS
+//#define CREATE_TRACE_POINTS /*Fix Redifinition */
 #include <trace/events/cpufreq_interactive.h>
 
 static int active_count;
