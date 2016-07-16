@@ -21,6 +21,7 @@ obj-$(CONFIG_IOSCHED_SIOPLUS)	+= sioplus-iosched.o
 obj-$(CONFIG_IOSCHED_TEST)	+= test-iosched.o
 obj-$(CONFIG_IOSCHED_BFQ)	+= bfq-iosched.o
 obj-$(CONFIG_IOSCHED_ZEN)	+= zen-iosched.o
+obj-$(CONFIG_IOSCHED_MAPLE)	+= maple-iosched.o
 obj-$(CONFIG_IOSCHED_VR)	+= vr-iosched.o
 obj-$(CONFIG_IOSCHED_TRIPNDROID)	+= tripndroid-iosched.o
 
