@@ -804,7 +804,8 @@ compress_again:
 				__GFP_KSWAPD_RECLAIM |
 #endif
 				__GFP_NOWARN |
-				__GFP_HIGHMEM);
+				__GFP_HIGHMEM |
+				__GFP_MOVABLE);
 	if (!handle) {
 		zcomp_stream_put(zram->comp);
 		zstrm = NULL;
@@ -812,7 +813,8 @@ compress_again:
 		atomic64_inc(&zram->stats.writestall);
 
 		handle = zs_malloc(meta->mem_pool, clen,
-				GFP_NOIO | __GFP_HIGHMEM);
+				GFP_NOIO | __GFP_HIGHMEM |
+				__GFP_MOVABLE);
 		if (handle)
 			goto compress_again;
 
