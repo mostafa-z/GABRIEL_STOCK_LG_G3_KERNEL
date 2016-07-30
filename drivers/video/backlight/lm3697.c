@@ -23,6 +23,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/moduleparam.h>
+#include <linux/dyn_sync_cntrl.h>
 
 #include <mach/board_lge.h>
 
@@ -221,9 +222,17 @@ void lm3697_lcd_backlight_set_level(int level)
 	if (level == 0) {
 		if (backlight_status == BL_ON)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
+#ifdef CONFIG_DYNAMIC_FSYNC
+			// if dynamic fsync is defined call external suspend function
+			dyn_fsync_suspend();
+#endif
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
+#ifdef CONFIG_DYNAMIC_FSYNC
+			// if dynamic fsync is defined call external resume function
+			dyn_fsync_resume();
+#endif	
 	}
 
 	if (ret)
