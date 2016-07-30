@@ -27,6 +27,18 @@
 
 #include <mach/board_lge.h>
 
+/*
+ * debug = 1 will print all
+ */
+static unsigned int debug = 2;
+module_param_named(debug_mask, debug, uint, 0644);
+
+#define dprintk(msg...)		\
+do { 				\
+	if (debug)		\
+		pr_info(msg);	\
+} while (0)
+
 /* Registers */
 #define LM3697_REG_OUTPUT_CFG		0x10
 
@@ -222,6 +234,7 @@ void lm3697_lcd_backlight_set_level(int level)
 	if (level == 0) {
 		if (backlight_status == BL_ON)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
+			dprintk("[LM3697] backlight is off ...\n");
 #ifdef CONFIG_DYNAMIC_FSYNC
 			// if dynamic fsync is defined call external suspend function
 			dyn_fsync_suspend();
@@ -229,6 +242,7 @@ void lm3697_lcd_backlight_set_level(int level)
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
+			dprintk("[LM3697] backlight is on ...\n");
 #ifdef CONFIG_DYNAMIC_FSYNC
 			// if dynamic fsync is defined call external resume function
 			dyn_fsync_resume();
