@@ -33,6 +33,9 @@
 static unsigned int debug = 2;
 module_param_named(debug_mask, debug, uint, 0644);
 
+static unsigned int sleep_state = 0;
+module_param_named(sleep_state, sleep_state, uint, 0644);
+
 #define dprintk(msg...)		\
 do { 				\
 	if (debug)		\
@@ -235,6 +238,7 @@ void lm3697_lcd_backlight_set_level(int level)
 		if (backlight_status == BL_ON)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
 			dprintk("[LM3697] backlight is off ...\n");
+			sleep_state = 1;
 #ifdef CONFIG_DYNAMIC_FSYNC
 			// if dynamic fsync is defined call external suspend function
 			dyn_fsync_suspend();
@@ -243,6 +247,7 @@ void lm3697_lcd_backlight_set_level(int level)
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
 			dprintk("[LM3697] backlight is on ...\n");
+			sleep_state = 0;
 #ifdef CONFIG_DYNAMIC_FSYNC
 			// if dynamic fsync is defined call external resume function
 			dyn_fsync_resume();
