@@ -297,7 +297,7 @@ static ssize_t set_pattern(struct device *dev, struct device_attribute *attr, co
 	ret = size;
 
 	if (lge_get_boot_mode() <= LGE_BOOT_MODE_CHARGERLOGO) {
-		printk("[RGB LED] pattern_num = %d\n", pattern_num);
+		pr_debug("[RGB LED] pattern_num = %d\n", pattern_num);
 
 		if ((pattern_num != 35) && (pattern_num != 36))
 			change_led_pattern(pattern_num);

@@ -2896,8 +2896,10 @@ static int synaptics_ts_noise_log(struct i2c_client *client, struct touch_data* 
 
 	if ((ts->ts_state_flag.ts_noise_log_flag == TS_NOISE_LOG_ENABLE)
 		|| (touch_debug_mask & DEBUG_NOISE)) {
+#if 0
 		if (prev_data->total_num != curr_data->total_num)
 			TOUCH_INFO_MSG("Curr: CNS[%5d]   IM[%5d]   CID_IM[%5d]   FREQ_SCAN_IM[%5d]\n", cns, im, cid_im, freq_scan_im);
+#endif
 	}
 
 	for (i = 0; i < MAX_FINGER; i++) {
@@ -2911,9 +2913,10 @@ static int synaptics_ts_noise_log(struct i2c_client *client, struct touch_data* 
 			|| touch_ta_status
 			|| touch_hdmi_status
 			|| (touch_debug_mask & DEBUG_NOISE))
+#if 0
 			TOUCH_INFO_MSG("Aver: CNS[%5lu]   IM[%5lu]   CID_IM[%5lu]   FREQ_SCAN_IM[%5lu] (cnt:%u)\n",
 				cns_sum/cnt, im_sum/cnt, cid_im_sum/cnt, freq_scan_im_sum/cnt, cnt);
-
+#endif
 		im_aver = im_sum/cnt;
 		cns_aver = cns_sum/cnt;
 		cid_im_aver = cid_im_sum/cnt;

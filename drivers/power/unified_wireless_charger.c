@@ -182,7 +182,7 @@ set_wlc_thermal_mitigation(const char *val, struct kernel_param *kp)
 	}
 
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL_FOR_WLC
-	pr_info("%s : thermal-engine set wlc_thermal_mitigation to %d\n",
+	pr_debug("%s : thermal-engine set wlc_thermal_mitigation to %d\n",
 		__func__, wlc_thermal_mitigation);
 
 	if(!(wlc_thermal_mitigation == THERMALE_ALL_CLEAR)
@@ -403,14 +403,14 @@ static int pm_power_get_event_property_wireless(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_WIRELESS_ONLINE:
 		if (likely(chip)) {
 			val->intval = is_wireless_charger_plugged_internal(chip);
-			pr_info("%s : POWER_SUPPLY_PROP_WIRELESS_ONLINE :%d\n",
+			pr_debug("%s : POWER_SUPPLY_PROP_WIRELESS_ONLINE :%d\n",
 				__func__, val->intval);
 		}
 		break;
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL_FOR_WLC
 	case POWER_SUPPLY_PROP_WIRELESS_THERMAL_MITIGATION:
 		val->intval = wlc_thermal_mitigation;
-		pr_info("%s : POWER_SUPPLY_PROP_WIRELESS_THERMAL_MITIGATION : %d\n",
+		pr_debug("%s : POWER_SUPPLY_PROP_WIRELESS_THERMAL_MITIGATION : %d\n",
 			__func__, val->intval);
 		break;
 #endif
