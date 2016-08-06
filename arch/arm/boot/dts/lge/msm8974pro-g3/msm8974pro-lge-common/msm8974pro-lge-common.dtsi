@@ -116,8 +116,8 @@
 
 	/* common: core */
 	qcom,wdt@f9017000 {
-		qcom,bark-time = <16000>;
-		qcom,pet-time = <10000>;
+		qcom,bark-time = <22000>;
+		qcom,pet-time = <16000>;
 	};
 
 	serial@f991d000 {
