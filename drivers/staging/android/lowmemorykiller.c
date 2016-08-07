@@ -47,6 +47,7 @@
 #include <linux/cpuset.h>
 #include <linux/show_mem_notifier.h>
 #include <linux/vmpressure.h>
+#include <linux/zcache.h>
 #include <linux/powersuspend.h>
 
 #define CREATE_TRACE_POINTS
@@ -439,8 +440,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	other_free = global_page_state(NR_FREE_PAGES);
 
 	if (global_page_state(NR_SHMEM) + total_swapcache_pages <
-		global_page_state(NR_FILE_PAGES))
-		other_file = global_page_state(NR_FILE_PAGES) -
+		global_page_state(NR_FILE_PAGES) + zcache_pages())
+		other_file = global_page_state(NR_FILE_PAGES) + zcache_pages() -
 						global_page_state(NR_SHMEM) -
 						global_page_state(NR_UNEVICTABLE) -
 						total_swapcache_pages;
