@@ -1403,7 +1403,7 @@ static int __devexit krait_power_remove(struct platform_device *pdev)
 #ifdef CONFIG_SHITTY_VARIANT
 static struct of_device_id krait_power_match_table[] = {
 #else
-static struct of_device_id krait_power_match_table[] __initdata = {
+static struct of_device_id krait_power_match_table[] __initdata_refok = {
 #endif
 	{ .compatible = "qcom,krait-regulator", },
 	{}
@@ -1422,7 +1422,7 @@ static struct platform_driver krait_power_driver = {
 #ifdef CONFIG_SHITTY_VARIANT
 static struct of_device_id krait_pdn_match_table[] = {
 #else
-static struct of_device_id krait_pdn_match_table[] __initdata = {
+static struct of_device_id krait_pdn_match_table[] __initdata_refok = {
 #endif
 	{ .compatible = "qcom,krait-pdn", },
 	{}

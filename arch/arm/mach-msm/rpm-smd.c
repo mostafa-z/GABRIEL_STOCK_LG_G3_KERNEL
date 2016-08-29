@@ -1418,7 +1418,7 @@ fail:
 #ifdef CONFIG_SHITTY_VARIANT
 static struct of_device_id msm_rpm_match_table[] =  {
 #else
-static struct of_device_id msm_rpm_match_table[] __initdata =  {
+static struct of_device_id msm_rpm_match_table[] __initdata_refok =  {
 #endif
 	{.compatible = "qcom,rpm-smd"},
 	{},

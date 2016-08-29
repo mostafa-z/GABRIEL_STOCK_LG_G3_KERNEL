@@ -149,7 +149,7 @@ static int __devinit gdsc_probe(struct platform_device *pdev)
 #ifdef CONFIG_SHITTY_VARIANT
 	static atomic_t gdsc_count = ATOMIC_INIT(-1);
 #else
-	static atomic_t gdsc_count __initdata = ATOMIC_INIT(-1);
+	static atomic_t gdsc_count __initdata_refok = ATOMIC_INIT(-1);
 #endif
 	struct regulator_init_data *init_data;
 	struct resource *res;
@@ -281,7 +281,7 @@ static int __devexit gdsc_remove(struct platform_device *pdev)
 #ifdef CONFIG_SHITTY_VARIANT
 static struct of_device_id gdsc_match_table[] = {
 #else
-static struct of_device_id gdsc_match_table[] __initdata = {
+static struct of_device_id gdsc_match_table[] __initdata_refok = {
 #endif
 	{ .compatible = "qcom,gdsc" },
 	{}

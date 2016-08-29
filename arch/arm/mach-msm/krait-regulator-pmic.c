@@ -75,7 +75,7 @@ static struct krait_vreg_pmic_chip *the_chip;
 #ifdef CONFIG_SHITTY_VARIANT
 static struct of_device_id krait_vreg_pmic_match_table[] = {
 #else
-static struct of_device_id krait_vreg_pmic_match_table[] __initdata = {
+static struct of_device_id krait_vreg_pmic_match_table[] __initdata_refok = {
 #endif
 	{ .compatible = KRAIT_REG_PMIC_DEV_NAME },
 	{}
