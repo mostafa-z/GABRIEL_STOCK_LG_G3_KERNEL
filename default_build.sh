@@ -33,7 +33,7 @@ RK=(READY_KERNEL);
 BOOT=(arch/arm/boot);
 DTC=(scripts/dtc);
 DCONF=(arch/arm/configs);
-STOCK_DEF=(g3-global_com-perf_defconfig);
+STOCK_DEF=(cyanogenmod_d855_16_defconfig);
 NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/cyanogenmod_d855_* | cut -c 23-28);
 
 export PATH=$PATH:tools/lz4demo
@@ -362,7 +362,7 @@ select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-
 	esac;
 done;
 echo "What to do What not to do ?!";
-select CHOICE in D850 D851 D852 D855 VS985 LS990 F400 CONTINUE_BUILD D855_STOCK_DEF D855_NCONF ALL; do
+select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD D855_STOCK_DEF D855_NCONF ALL; do
 	case "$CHOICE" in
 		"D850")
 			CLEANUP;
@@ -385,10 +385,17 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 F400 CONTINUE_BUILD D855_STOCK_
 			RAMDISK=D852
 			REBUILD;
 			break;;
-		"D855")
+		"D855_16")
+			CLEANUP;
+			CUSTOM_DEF=cyanogenmod_d855_16_defconfig
+			MODEL=D855_16
+			RAMDISK=D855
+			REBUILD;
+			break;;
+		"D855_32")
 			CLEANUP;
 			CUSTOM_DEF=cyanogenmod_d855_defconfig
-			MODEL=D855
+			MODEL=D855_32
 			RAMDISK=D855
 			REBUILD;
 			break;;
@@ -450,18 +457,30 @@ select CHOICE in D850 D851 D852 D855 VS985 LS990 F400 CONTINUE_BUILD D855_STOCK_
 			RAMDISK=D852
 			REBUILD;
 			echo "D852 is ready!"
-			echo "starting build of D855 in 3"
+			echo "starting build of D855_16 in 3"
 			sleep 1;
-			echo "starting build of D855 in 2"
+			echo "starting build of D855_16 in 2"
 			sleep 1;
-			echo "starting build of D855 in 1"
+			echo "starting build of D855_16 in 1"
+			sleep 1;
+			CLEANUP;
+			CUSTOM_DEF=cyanogenmod_d855_16_defconfig
+			MODEL=D855_16
+			RAMDISK=D855
+			REBUILD;
+			echo "D855_16 is ready!"
+			echo "starting build of D855_32 in 3"
+			sleep 1;
+			echo "starting build of D855_32 in 2"
+			sleep 1;
+			echo "starting build of D855_32 in 1"
 			sleep 1;
 			CLEANUP;
 			CUSTOM_DEF=cyanogenmod_d855_defconfig
-			MODEL=D855
+			MODEL=D855_32
 			RAMDISK=D855
 			REBUILD;
-			echo "D855 is ready!"
+			echo "D855_32 is ready!"
 			echo "starting build of VS985 in 3"
 			sleep 1;
 			echo "starting build of VS985 in 2"
