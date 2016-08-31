@@ -33,11 +33,11 @@
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9320.h"
-#ifdef CONFIG_SND_SOC_TPA2015D
 #include "../codecs/tpa2015d1.h"
-#endif
-#ifdef CONFIG_MACH_LGE
 #include <mach/board_lge.h>
+
+#if defined (CONFIG_SND_SOC_TPA2028D) || defined (CONFIG_SND_SOC_TPA2028D_STEREO)
+#include <sound/tpa2028d.h>
 #endif
 
 #define DRV_NAME "msm8974-asoc-taiko"
@@ -55,22 +55,31 @@ static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int slim0_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int hdmi_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
-#ifdef CONFIG_MACH_LGE
 #define SAMPLING_RATE_8KHZ 8000
 #define SAMPLING_RATE_16KHZ 16000
-#endif
 #define SAMPLING_RATE_48KHZ 48000
 #define SAMPLING_RATE_96KHZ 96000
 #define SAMPLING_RATE_192KHZ 192000
 
 #ifdef CONFIG_SND_SOC_CS35L32
+#ifdef CONFIG_MACH_MSM8974_G3_CN
+#define HW_REV_CIRRUS HW_REV_EVB1
+#else
 #define HW_REV_CIRRUS HW_REV_A
 #endif
+#endif
 static int msm8974_auxpcm_rate = 8000;
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+#define LO_1_SPK_AMP	0x1
+#define LO_2_SPK_AMP	0x2
+#define LO_3_SPK_AMP	0x4
+#define LO_4_SPK_AMP	0x8
+#else
 #define LO_1_SPK_AMP	0x1
 #define LO_3_SPK_AMP	0x2
 #define LO_2_SPK_AMP	0x4
 #define LO_4_SPK_AMP	0x8
+#endif
 
 #define I2S_PCM_SEL 1
 #define I2S_PCM_SEL_OFFSET 1
@@ -111,30 +120,36 @@ struct request_gpio {
 };
 
 static struct request_gpio quat_mi2s_gpio[] = {
-	{
-		.gpio_no = GPIO_QUAT_MI2S_MCLK,
-		.gpio_name = "QUAT_MI2S_MCLK",
-	},
-	{
-		.gpio_no = GPIO_QUAT_MI2S_SCK,
-		.gpio_name = "QUAT_MI2S_SCK",
-	},
-	{
-		.gpio_no = GPIO_QUAT_MI2S_WS,
-		.gpio_name = "QUAT_MI2S_WS",
-	},
-	{
-		.gpio_no = GPIO_QUAT_MI2S_DATA0,
-		.gpio_name = "QUAT_MI2S_DATA0",
-	},
+
+       {
+               .gpio_no = GPIO_QUAT_MI2S_MCLK,
+               .gpio_name = "QUAT_MI2S_MCLK",
+       },
+
+       {
+               .gpio_no = GPIO_QUAT_MI2S_SCK,
+               .gpio_name = "QUAT_MI2S_SCK",
+       },
+       {
+               .gpio_no = GPIO_QUAT_MI2S_WS,
+               .gpio_name = "QUAT_MI2S_WS",
+       },
+
+       {
+               .gpio_no = GPIO_QUAT_MI2S_DATA0,
+               .gpio_name = "QUAT_MI2S_DATA0",
+       },
 };
 
+
+#ifdef CONFIG_SND_SOC_CS35L32
 static struct request_gpio mclk_mi2s_gpio[] = {
 	{
 		.gpio_no = GPIO_QUAT_MI2S_MCLK,
 		.gpio_name = "QUAT_MI2S_CLK",
 	},
 };
+#endif
 
 static struct afe_clk_cfg lpass_mi2s_enable = {
 	AFE_API_VERSION_I2S_CONFIG,
@@ -159,10 +174,10 @@ static struct afe_clk_cfg lpass_mi2s_disable = {
 
 /* MI2S clock */
 struct mi2s_clk {
-	struct clk *core_clk;
-	struct clk *osr_clk;
-	struct clk *bit_clk;
-	atomic_t mi2s_rsc_ref;
+       struct clk *core_clk;
+       struct clk *osr_clk;
+       struct clk *bit_clk;
+       atomic_t mi2s_rsc_ref;
 };
 static struct mi2s_clk quat_mi2s_clk;
 #endif /*CONFIG_SND_SOC_CS35L32*/
@@ -194,6 +209,56 @@ static const char *const auxpcm_rate_text[] = {"rate_8000", "rate_16000"};
 static const struct soc_enum msm8974_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
 };
+
+#ifdef CONFIG_SND_FM_RADIO
+
+atomic_t tert_mi2s_rsc_ref;
+#define GPIO_TERT_MI2S_SCK    74
+#define GPIO_TERT_MI2S_WS     75
+#define GPIO_TERT_MI2S_DATA0  76
+//#define GPIO_TERT_MI2S_DATA1  77
+#ifdef CONFIG_SND_FM_SWTICH
+#define GPIO_FM_RADIO_SWITCH 69
+#endif
+
+#ifndef CONFIG_SND_SOC_CS35L32
+struct request_gpio {
+	unsigned gpio_no;
+	char *gpio_name;
+};
+#endif
+static struct request_gpio tert_mi2s_gpio[] = {
+
+	{
+		.gpio_no = GPIO_TERT_MI2S_SCK,
+		.gpio_name = "TERT_MI2S_SCK",
+	},
+	{
+		.gpio_no = GPIO_TERT_MI2S_WS,
+		.gpio_name = "TERT_MI2S_WS",
+	},
+	{
+		.gpio_no = GPIO_TERT_MI2S_DATA0,
+		.gpio_name = "TERT_MI2S_DATA0",
+	},
+	#if 0
+	{
+		.gpio_no = GPIO_TERT_MI2S_DATA1,
+		.gpio_name = "TERT_MI2S_DATA1",
+	},
+	#endif
+
+};
+#if 0
+static struct request_gpio fm_radio_gpio[] = {
+
+	{
+		.gpio_no = GPIO_FM_RADIO_SWITCH,
+		.gpio_name = "FM_RADIO_SWITCH",
+	},
+};
+#endif
+#endif
 
 void *def_taiko_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
@@ -281,6 +346,17 @@ enum {
 
 static struct platform_device *spdev;
 static struct regulator *ext_spk_amp_regulator;
+
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+static int ext_boost_gpio = -1;
+static int boost_on = 0;
+#endif
+
+#ifdef CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+static int flag_mute_spk_for_swirrc = 0;
+void mute_spk_for_swirrc (int enable);
+#endif //CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+
 static int ext_spk_amp_gpio = -1;
 static int ext_ult_spk_amp_gpio = -1;
 static int ext_ult_lo_amp_gpio = -1;
@@ -305,6 +381,56 @@ static int clk_users;
 static atomic_t prim_auxpcm_rsc_ref;
 static atomic_t sec_auxpcm_rsc_ref;
 
+#if defined(CONFIG_SND_FM_RADIO) && defined(CONFIG_SND_FM_SWTICH)
+
+static const char *fm_radio_text[] = {"ON", "OFF"};
+static const struct soc_enum fm_radio_enum[] = {
+	SOC_ENUM_SINGLE_EXT((sizeof(fm_radio_text)/sizeof(char *)), fm_radio_text),
+};
+
+static int fm_radio_init(void)
+{
+	int rtn;
+	rtn = gpio_request(GPIO_FM_RADIO_SWITCH, "FM_RADIO_SWITCH");
+
+	pr_info("%s:, rtn = %d\n", __func__, rtn);
+
+	gpio_tlmm_config(GPIO_CFG(GPIO_FM_RADIO_SWITCH, 0, GPIO_CFG_OUTPUT,
+		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+
+	gpio_direction_output(GPIO_FM_RADIO_SWITCH, 1);
+
+	if (rtn) {
+		pr_err("%s: Failed to request gpio %d\n",
+			   __func__, rtn);
+			gpio_free(GPIO_FM_RADIO_SWITCH);
+		}
+
+	return rtn;
+}
+
+
+static void fm_radio_run(int on)
+{
+	gpio_direction_output(GPIO_FM_RADIO_SWITCH, on);
+
+	pr_debug("%s: %s fm_radio_reset_gpio.\n", __func__,
+			on ? "Enable" : "Disable");
+}
+
+static int fm_radio_mode(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: ucontrol->value.integer.value[0]  = %ld\n", __func__,
+			ucontrol->value.integer.value[0]);
+	printk(KERN_INFO "%s: ucontrol->value.integer.value[0]  = %ld\n", __func__,
+			ucontrol->value.integer.value[0]);
+
+	fm_radio_run(ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+#endif
 
 static int msm8974_liquid_ext_spk_power_amp_init(void)
 {
@@ -644,7 +770,6 @@ static int msm8974_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-
 static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 			     struct snd_kcontrol *k, int event)
 {
@@ -652,33 +777,33 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
 #ifdef CONFIG_SND_SOC_TPA2015D
-	if (tpa_enabled) {
-		if (!strncmp(w->name, "Lineout_1 amp", 14))
-			tpa2015d1_ext_spk_power_amp_enable(1);
-		else if (!strncmp(w->name, "Lineout_3 amp", 14))
-			tpa2015d1_ext_spk_power_amp_enable(1);
-		else {
-			pr_err("%s() Invalid Speaker Widget = %s\n",
+		if (tpa_enabled) {
+			if (!strncmp(w->name, "Lineout_1 amp", 14))
+				tpa2015d1_ext_spk_power_amp_enable(1);
+			else if (!strncmp(w->name, "Lineout_3 amp", 14))
+				tpa2015d1_ext_spk_power_amp_enable(1);
+			else {
+				pr_err("%s() Invalid Speaker Widget = %s\n",
 					__func__, w->name);
-			return -EINVAL;
-		}
-	} else {
+				return -EINVAL;
+			}
+		} else {
 #endif
-		if (!strncmp(w->name, "Lineout_1 amp", 14))
-			msm8974_ext_spk_power_amp_on(LO_1_SPK_AMP);
-		else if (!strncmp(w->name, "Lineout_3 amp", 14))
-			msm8974_ext_spk_power_amp_on(LO_3_SPK_AMP);
-		else if (!strncmp(w->name, "Lineout_2 amp", 14))
-			msm8974_ext_spk_power_amp_on(LO_2_SPK_AMP);
-		else if (!strncmp(w->name, "Lineout_4 amp", 14))
-			msm8974_ext_spk_power_amp_on(LO_4_SPK_AMP);
-		else {
-			pr_err("%s() Invalid Speaker Widget = %s\n",
-					__func__, w->name);
-			return -EINVAL;
-		}
+			if (!strncmp(w->name, "Lineout_1 amp", 14))
+				msm8974_ext_spk_power_amp_on(LO_1_SPK_AMP);
+			else if (!strncmp(w->name, "Lineout_3 amp", 14))
+				msm8974_ext_spk_power_amp_on(LO_3_SPK_AMP);
+			else if (!strncmp(w->name, "Lineout_2 amp", 14))
+				msm8974_ext_spk_power_amp_on(LO_2_SPK_AMP);
+			else if (!strncmp(w->name, "Lineout_4 amp", 14))
+				msm8974_ext_spk_power_amp_on(LO_4_SPK_AMP);
+			else {
+				pr_err("%s() Invalid Speaker Widget = %s\n",
+				__func__, w->name);
+				return -EINVAL;
+			}
 #ifdef CONFIG_SND_SOC_TPA2015D
-	}
+		}
 #endif
 	} else {
 #ifdef CONFIG_SND_SOC_TPA2015D
@@ -711,11 +836,121 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 		}
 #endif
 	}
-
 	return 0;
 
 }
 
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+static void tpa2028d_ext_spk_power_amp_on(u32 spk)
+{
+#ifdef CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+	if (flag_mute_spk_for_swirrc) {
+        printk("%s: irrc is working, speakers will not be enabled\n", __func__);
+        return;
+    }
+#endif //CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+
+	if (spk & (LO_1_SPK_AMP | LO_2_SPK_AMP)) {
+		printk("%s Enable stereo speakers case spk = 0x%08x\n",__func__, spk);
+		msm8974_ext_spk_pamp |= spk;
+		if(!boost_on){
+			if (ext_boost_gpio >= 0) {
+				gpio_direction_output(ext_boost_gpio, 1);
+				printk("%s: Enabled 5V external supply for external amp. spk = %d\n",__func__,spk);
+				boost_on = 1;
+			}else {
+				printk("%s: Booster GPIO is not valid.\n", __func__);
+			}
+		}
+		set_amp_gain(spk-1, MSM8974_SPK_ON);
+		printk("%s: CONFIG_SND_SOC_TPA2028D_STEREO.  spk = %d\n",__func__,spk);
+
+	} else  {
+		pr_err("%s: Invalid external speaker ampl. spk = 0x%x\n",
+		       __func__, spk);
+	}
+
+	return ;
+}
+
+
+static void tpa2028d_ext_spk_power_amp_off(u32 spk)
+{
+	if (spk & (LO_1_SPK_AMP | LO_2_SPK_AMP)) {
+
+		printk("%s Disable left and right speakers case spk = 0x%08x", __func__, spk);
+		msm8974_ext_spk_pamp &= ~spk;
+
+		set_amp_gain(spk-1, MSM8974_SPK_OFF);
+		if(boost_on && (!msm8974_ext_spk_pamp)){
+			if (ext_boost_gpio >= 0) {
+				gpio_direction_output(ext_boost_gpio, 0);
+				printk("%s: Disabled 5V external supply for external amp. spk = %d\n",
+						__func__,spk);
+				boost_on = 0;
+			}else{
+				printk("%s: Booster GPIO is not valid.\n", __func__);
+			}
+		}
+
+	} else  {
+
+		pr_err("%s: ERROR : Invalid Ext Spk Ampl. spk = 0x%08x\n",
+			__func__, spk);
+		return;
+	}
+}
+
+#ifdef CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+void mute_spk_for_swirrc (int enable)
+{
+	printk("%s: set mute %s\n", __func__, enable?"Enable":"Disable");
+	flag_mute_spk_for_swirrc = enable;
+	if (flag_mute_spk_for_swirrc) {
+		tpa2028d_ext_spk_power_amp_off(LO_1_SPK_AMP);
+		tpa2028d_ext_spk_power_amp_off(LO_2_SPK_AMP);
+	}
+}
+EXPORT_SYMBOL_GPL(mute_spk_for_swirrc);
+#endif //CONFIG_LGE_SW_IRRC_MUTE_SPEAKER
+
+static int tpa2028d_ext_spkramp_event(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *k, int event)
+{
+	printk("%s()\n", __func__);
+
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		if (!strncmp(w->name, "Lineout_5 amp", 14))
+			tpa2028d_ext_spk_power_amp_on(LO_1_SPK_AMP);
+		else if (!strncmp(w->name, "Lineout_6 amp", 14))
+			tpa2028d_ext_spk_power_amp_on(LO_2_SPK_AMP);
+		else if (!strncmp(w->name, "Lineout_8 amp", 14))
+			tpa2028d_ext_spk_power_amp_on(LO_4_SPK_AMP);
+
+		else {
+			pr_err("%s() Invalid Speaker Widget = %s\n",
+			__func__, w->name);
+			return -EINVAL;
+		}
+	} else {
+		if (!strncmp(w->name, "Lineout_5 amp", 14))
+			tpa2028d_ext_spk_power_amp_off(LO_1_SPK_AMP);
+		else if (!strncmp(w->name, "Lineout_6 amp", 14))
+			tpa2028d_ext_spk_power_amp_off(LO_2_SPK_AMP);
+		else if (!strncmp(w->name, "Lineout_8 amp", 14))
+			tpa2028d_ext_spk_power_amp_off(LO_4_SPK_AMP);
+
+		else {
+			pr_err("%s() Invalid Speaker Widget = %s\n",
+				__func__, w->name);
+			return -EINVAL;
+		}
+	}
+	return 0;
+
+}
+
+#endif
 static int msm_ext_spkramp_ultrasound_event(struct snd_soc_dapm_widget *w,
 			     struct snd_kcontrol *k, int event)
 {
@@ -998,10 +1233,15 @@ static const struct snd_soc_dapm_widget msm8974_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
 	msm8974_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-
 #ifdef CONFIG_SND_SOC_CS35L32
 	SND_SOC_DAPM_SPK("Main Speaker", NULL),
 #endif /*CONFIG_SND_SOC_CS35L32*/
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+	SND_SOC_DAPM_SPK("Lineout_5 amp", tpa2028d_ext_spkramp_event),
+	SND_SOC_DAPM_SPK("Lineout_6 amp", tpa2028d_ext_spkramp_event),
+	SND_SOC_DAPM_SPK("Lineout_7 amp", tpa2028d_ext_spkramp_event),
+	SND_SOC_DAPM_SPK("Lineout_8 amp", tpa2028d_ext_spkramp_event),
+#endif
 	SND_SOC_DAPM_SPK("Lineout_1 amp", msm_ext_spkramp_event),
 	SND_SOC_DAPM_SPK("Lineout_3 amp", msm_ext_spkramp_event),
 
@@ -1043,11 +1283,7 @@ static const char *const slim0_tx_ch_text[] = {"One", "Two", "Three", "Four",
 static char const *hdmi_rx_ch_text[] = {"Two", "Three", "Four", "Five",
 					"Six", "Seven", "Eight"};
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
-#ifdef CONFIG_MACH_LGE
 static char const *slim0_rx_sample_rate_text[] = {"KHZ_8", "KHZ_16", "KHZ_48", "KHZ_96",
-#else
-static char const *slim0_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
-#endif
 					"KHZ_192"};
 static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 	"Five",	"Six", "Seven", "Eight"};
@@ -1065,7 +1301,6 @@ static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	int sample_rate_val = 0;
 
 	switch (slim0_rx_sample_rate) {
-#ifdef CONFIG_MACH_LGE
 	case SAMPLING_RATE_192KHZ:
 		sample_rate_val = 4;
 		break;
@@ -1085,19 +1320,6 @@ static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	case SAMPLING_RATE_48KHZ:
 	default:
 		sample_rate_val = 2;
-#else
-	case SAMPLING_RATE_192KHZ:
-		sample_rate_val = 2;
-		break;
-
-	case SAMPLING_RATE_96KHZ:
-		sample_rate_val = 1;
-		break;
-
-	case SAMPLING_RATE_48KHZ:
-	default:
-		sample_rate_val = 0;
-#endif
 		break;
 	}
 
@@ -1115,7 +1337,6 @@ static int slim0_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 			ucontrol->value.integer.value[0]);
 
 	switch (ucontrol->value.integer.value[0]) {
-#ifdef CONFIG_MACH_LGE
 	case 4:
 		slim0_rx_sample_rate = SAMPLING_RATE_192KHZ;
 		break;
@@ -1129,15 +1350,6 @@ static int slim0_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 		slim0_rx_sample_rate = SAMPLING_RATE_8KHZ;
 		break;
 	case 2:
-#else
-	case 2:
-		slim0_rx_sample_rate = SAMPLING_RATE_192KHZ;
-		break;
-	case 1:
-		slim0_rx_sample_rate = SAMPLING_RATE_96KHZ;
-		break;
-	case 0:
-#endif
 	default:
 		slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 	}
@@ -1182,6 +1394,8 @@ static int slim0_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 		slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 		break;
 	}
+	pr_debug("%s: slim0_rx_bit_format = %d\n",
+			 __func__, slim0_rx_bit_format);
 	return 0;
 }
 
@@ -1227,16 +1441,16 @@ static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
 {
 	pr_debug("%s: msm_btsco_rate  = %d", __func__, msm_btsco_rate);
 #ifdef CONFIG_MACH_LGE
-	switch (msm_btsco_rate) {
-	case BTSCO_RATE_16KHZ:
-		ucontrol->value.integer.value[0] = 1;
-		break;
+    switch (msm_btsco_rate) {
+    case BTSCO_RATE_16KHZ:
+        ucontrol->value.integer.value[0] = 1;
+        break;
 
-	case BTSCO_RATE_8KHZ:
-	default:
-		ucontrol->value.integer.value[0] = 0;
-		break;
-	}
+    case BTSCO_RATE_8KHZ:
+    default:
+        ucontrol->value.integer.value[0] = 0;
+        break;
+    }
 #else
 	ucontrol->value.integer.value[0] = msm_btsco_rate;
 #endif
@@ -1780,11 +1994,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(8, slim0_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(7, hdmi_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
-#ifdef CONFIG_MACH_LGE
 	SOC_ENUM_SINGLE_EXT(5, slim0_rx_sample_rate_text),
-#else
-	SOC_ENUM_SINGLE_EXT(3, slim0_rx_sample_rate_text),
-#endif
 	SOC_ENUM_SINGLE_EXT(8, proxy_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(3, hdmi_rx_sample_rate_text),
 #ifdef CONFIG_SND_SOC_CS35L32
@@ -1821,6 +2031,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("SPK Amp CLK", msm_snd_enum[0],
 			afe_spk_amp_clk_get, afe_spk_amp_clk_set),
 #endif /*CONFIG_SND_SOC_CS35L32*/
+#if defined(CONFIG_SND_FM_RADIO) && defined(CONFIG_SND_FM_SWTICH)
+	SOC_ENUM_EXT("FM Radio", fm_radio_enum[0],
+			fm_radio_mode, fm_radio_mode),
+#endif
 };
 
 static bool msm8974_swap_gnd_mic(struct snd_soc_codec *codec)
@@ -2022,7 +2236,8 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			return err;
 		}
 	}
-#ifndef CONFIG_MACH_LGE
+
+#ifdef CONFIG_ENABLE_MBHC
 	/* start mbhc */
 	mbhc_cfg.calibration = def_taiko_mbhc_cal();
 	if (mbhc_cfg.calibration) {
@@ -2033,7 +2248,8 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		err = -ENOMEM;
 		goto out;
 	}
-#endif
+#endif // CONFIG_ENABLE_MBHC
+
 	adsp_state_notifier =
 	    subsys_notif_register_notifier("adsp",
 					   &adsp_state_notifier_block);
@@ -2211,6 +2427,116 @@ static struct snd_soc_ops msm8974_be_ops = {
 };
 
 
+#ifdef CONFIG_SND_FM_RADIO
+
+static int msm8974_tert_mi2s_free_gpios(void)
+{
+	int	i;
+	for (i = 0; i < ARRAY_SIZE(tert_mi2s_gpio); i++)
+		gpio_free(tert_mi2s_gpio[i].gpio_no);
+	return 0;
+}
+
+static struct afe_clk_cfg lpass_tert_mi2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+static struct afe_clk_cfg lpass_tert_mi2s_disable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	0,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
+
+static void msm8974_tert_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+
+	if (atomic_dec_return(&tert_mi2s_rsc_ref) == 0) {
+		pr_info("%s: free mi2s resources\n", __func__);
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_tert_mi2s_disable);
+		if (ret < 0)
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+		msm8974_tert_mi2s_free_gpios();
+	}
+}
+
+static int msm8974_configure_tert_mi2s_gpio(void)
+{
+	int	rtn;
+	int	i;
+	for (i = 0; i < ARRAY_SIZE(tert_mi2s_gpio); i++) {
+
+		rtn = gpio_request(tert_mi2s_gpio[i].gpio_no,
+				tert_mi2s_gpio[i].gpio_name);
+
+		pr_info("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+		tert_mi2s_gpio[i].gpio_no, tert_mi2s_gpio[i].gpio_name, rtn);
+		gpio_set_value(tert_mi2s_gpio[i].gpio_no, 1);
+		if (rtn) {
+			pr_err("%s: Failed to request gpio %d\n",
+				   __func__,
+				   tert_mi2s_gpio[i].gpio_no);
+			while (i >= 0) {
+				gpio_free(tert_mi2s_gpio[i].gpio_no);
+				i--;
+			}
+			break;
+		}
+	}
+
+	return rtn;
+}
+
+static int msm8974_tert_mi2s_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+
+	pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	if (atomic_inc_return(&tert_mi2s_rsc_ref) == 1) {
+		pr_info("%s: acquire mi2s resources\n", __func__);
+		msm8974_configure_tert_mi2s_gpio();
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_tert_mi2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			dev_err(cpu_dai->dev, "set format for CPU dai"
+				" failed\n");
+
+		ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			dev_err(codec_dai->dev, "set format for codec dai"
+				 " failed\n");
+		ret  = 0;
+	} else
+		pr_info("%s: ****** dai name error %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	pr_info("%s: ****** return %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+	return ret;
+}
+
+static struct snd_soc_ops msm8974_tert_mi2s_be_ops = {
+	.startup = msm8974_tert_mi2s_startup,
+	.shutdown = msm8974_tert_mi2s_shutdown
+};
+
+#endif
 
 static int msm8974_slimbus_2_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
@@ -3111,21 +3437,6 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
-#ifndef CONFIG_MACH_LGE
-	/* Incall Music 2 BACK END DAI Link */
-	{
-		.name = LPASS_BE_VOICE2_PLAYBACK_TX,
-		.stream_name = "Voice2 Farend Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.32770",
-		.platform_name = "msm-pcm-routing",
-		.codec_name     = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_VOICE2_PLAYBACK_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ignore_suspend = 1,
-	}
-#endif
 };
 
 static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
@@ -3145,8 +3456,13 @@ static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
 	},
 };
 
-#ifdef CONFIG_MACH_LGE
-#define LGE_DAI_LINK_ID_BASE   80
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+/* DAI LINK added by lge should be here */
+/* even if functions is defeatured, dummy dai should be there */
+/* if you need to create new dai link, u must add new one behind last one */
+/* num of qct dia should be below LGE_DAI_LINK_ID_BASE */
+
+#define LGE_DAI_LINK_ID_BASE	80
 
 static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 #ifdef CONFIG_SND_SOC_CS35L32
@@ -3182,7 +3498,7 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 	{
 		.name = "Dummy DAI 100",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3198,7 +3514,7 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 	{
 		.name = "Dummy DAI 101",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3211,11 +3527,52 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
 #endif /*CONFIG_SND_SOC_CS35L32*/
+#ifdef CONFIG_SND_FM_RADIO
+    {
+		.name = "MI2S_TX Hostless",
+		.stream_name = "MI2S_TX Hostless",
+		.cpu_dai_name   = "MI2S_TX_HOSTLESS",
+		.platform_name  = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = "Tertiary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8974_tert_mi2s_be_ops,
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_TX,
+		.stream_name = "Tertiary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8974_tert_mi2s_be_ops,
+	},
+#else
 	/* DUMMY DAI Link */
 	{
 		.name = "INT_FM Hostless_LGE",
 		.stream_name = "INT_FM Hostless",
-		.cpu_dai_name   = "INT_FM_HOSTLESS",
+		.cpu_dai_name	= "INT_FM_HOSTLESS",
 		.platform_name  = "msm-pcm-hostless",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3231,7 +3588,7 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 	{
 		.name = "Dummy DAI 103",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3247,7 +3604,7 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 	{
 		.name = "Dummy DAI 104",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3259,11 +3616,27 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
+#endif /*CONFIG_SND_FM_RADIO*/
+#ifdef CONFIG_SND_INCALL_MUSIC_SUPPORT
+	/* Incall Music 2 BACK END DAI Link */
+	{
+		.name = LPASS_BE_VOICE2_PLAYBACK_TX,
+		.stream_name = "Voice2 Farend Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.32770",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_VOICE2_PLAYBACK_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ignore_suspend = 1,
+	},
+#else
 	/* DUMMY DAI Link */
 	{
 		.name = "Dummy DAI 105",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3275,11 +3648,30 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
+#endif /*CONFIG_SND_INCALL_MUSIC_SUPPORT*/
+
+#ifdef CONFIG_SND_LGE_DSDP_DUAL_AUDIO
+	{
+		.name = "Dual Audio",
+		.stream_name = "MultiMedia3",
+		.cpu_dai_name   = "MultiMedia3",
+		.platform_name  = "msm-pcm-dsp.0",
+		.dynamic = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
+	},
+#else
 	/* DUMMY DAI Link */
 	{
 		.name = "Dummy DAI 106",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3291,6 +3683,10 @@ static struct snd_soc_dai_link msm8974_lge_dai_link[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
+#endif /*CONFIG_SND_LGE_DSDP_DUAL_AUDIO*/
+
+
+
 };
 
 static struct snd_soc_dai_link msm8974_dummy_dai_link[] = {
@@ -3298,7 +3694,7 @@ static struct snd_soc_dai_link msm8974_dummy_dai_link[] = {
 	{
 		.name = "Dummy DAI",
 		.stream_name = "MultiMedia1",
-		.cpu_dai_name   = "MultiMedia1",
+		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3311,17 +3707,17 @@ static struct snd_soc_dai_link msm8974_dummy_dai_link[] = {
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
 };
-
-#endif
+#endif /*CONFIG_SND_DISABLE_DUMMY_DAI*/
 
 static struct snd_soc_dai_link msm8974_dai_links[
-#ifdef CONFIG_MACH_LGE
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
 					 LGE_DAI_LINK_ID_BASE +
 					 ARRAY_SIZE(msm8974_lge_dai_link)];
 #else
 					 ARRAY_SIZE(msm8974_common_dai_links) +
 					 ARRAY_SIZE(msm8974_hdmi_dai_link)];
-#endif
+#endif /*CONFIG_SND_DISABLE_DUMMY_DAI*/
+
 
 struct snd_soc_card snd_soc_card_msm8974 = {
 	.name		= "msm8974-taiko-snd-card",
@@ -3441,11 +3837,6 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 #ifdef CONFIG_SND_SOC_TPA2015D
 	struct device_node *tpa_amp_node;
 #endif
-#ifdef CONFIG_MACH_LGE
-	static char dummy_dai_name[LGE_DAI_LINK_ID_BASE][50];
-	int i;
-#endif
-
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No platform supplied from device tree\n");
 		return -EINVAL;
@@ -3540,8 +3931,7 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 #ifdef CONFIG_MACH_LGE
-	if (of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx")
-	    && !of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx,no-use")) {
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx") && !of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx,no-use")) {
 #else
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx")) {
 #endif
@@ -3555,38 +3945,43 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 			msm8974_hdmi_dai_link, sizeof(msm8974_hdmi_dai_link));
 
 		card->dai_link	= msm8974_dai_links;
-#ifdef CONFIG_MACH_LGE
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
 		card->num_links	= ARRAY_SIZE(msm8974_common_dai_links)
 							+ ARRAY_SIZE(msm8974_hdmi_dai_link);
 #else
 		card->num_links	= ARRAY_SIZE(msm8974_dai_links);
-#endif
+#endif /*CONFIG_SND_DISABLE_DUMMY_DAI*/
 	} else {
 		dev_info(&pdev->dev, "%s(): No hdmi audio support\n", __func__);
-
-#ifdef CONFIG_MACH_LGE
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
 		memcpy(msm8974_dai_links, msm8974_common_dai_links,
 			sizeof(msm8974_common_dai_links));
 		card->dai_link	= msm8974_dai_links;
 #else
 		card->dai_link	= msm8974_common_dai_links;
-#endif
-
+#endif /*CONFIG_SND_DISABLE_DUMMY_DAI*/
 		card->num_links	= ARRAY_SIZE(msm8974_common_dai_links);
 	}
 
-#ifdef CONFIG_MACH_LGE
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+/* Filled dummy dai behind LGE_DAI_LINK_ID_BASE */
+{
+	static char dummy_dai_name[LGE_DAI_LINK_ID_BASE][50];
+	int i;
 	for(i = card->num_links; i < LGE_DAI_LINK_ID_BASE; i++)	{
 		struct snd_soc_dai_link *link = msm8974_dai_links + i;
-		memcpy(link, msm8974_dummy_dai_link,
+		memcpy(link, msm8974_dummy_dai_link, 
 			sizeof(msm8974_dummy_dai_link));
 		sprintf(&dummy_dai_name[i][0], "Dummy DAI %d", i);
 		link->name = &dummy_dai_name[i][0];
 	}
 	card->num_links = LGE_DAI_LINK_ID_BASE;
+}
+#endif
+
 #ifdef CONFIG_SND_SOC_CS35L32
-	/* Runtime defature for cirrus device
-	 * If a device has no driver of cirrus, overide cirrus dai to dummy */
+/* Runtime defature for cirrus device
+  * If a device has no driver of cirrus, overide cirrus dai to dummy */
 	if (lge_get_board_revno() < HW_REV_CIRRUS) {
 		memcpy(&msm8974_lge_dai_link[0], msm8974_dummy_dai_link,
 			sizeof(msm8974_dummy_dai_link));
@@ -3594,12 +3989,15 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 			sizeof(msm8974_dummy_dai_link));
 	}
 #endif /*CONFIG_SND_SOC_CS35L32*/
-	/* Append DAIs added by LGE in DAI LINK*/
+
+#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+/* Append DAIs added by LGE in DAI LINK*/
 	memcpy(msm8974_dai_links + card->num_links,
 			msm8974_lge_dai_link, sizeof(msm8974_lge_dai_link));
-	card->dai_link = msm8974_dai_links;
+	card->dai_link	= msm8974_dai_links;
 	card->num_links	+= ARRAY_SIZE(msm8974_lge_dai_link);
-#endif
+#endif /*CONFIG_SND_INCALL_MUSIC_SUPPORT*/
+
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
 	atomic_set(&sec_auxpcm_rsc_ref, 0);
@@ -3618,7 +4016,25 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
-
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+	ext_boost_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,cdc-ext-boost-gpios", 0);
+	if (ext_boost_gpio < 0) {
+		dev_err(card->dev, "Looking up %s property in node %s failed %d\n",
+			"qcom,cdc-ext-boost-gpios\n",
+			pdev->dev.of_node->full_name, ext_boost_gpio);
+	} else {
+		ret = gpio_request(ext_boost_gpio, "TAPAN_CODEC_EXT_BOOSTER");
+		gpio_direction_output(ext_boost_gpio, 0);
+		if (ret) {
+			/* GPIO to enable EXT VDD exists, but failed request */
+			dev_err(card->dev,
+					"%s: Failed to request tapan external booster gpio %d\n",
+					__func__, ext_boost_gpio);
+			goto err;
+		}
+	}
+#endif
 	/* Parse Primary AUXPCM info from DT */
 	ret = msm8974_dtparse_auxpcm(pdev, &pdata->pri_auxpcm_ctrl,
 					msm_prim_auxpcm_gpio_name);
@@ -3671,10 +4087,21 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_err(&pdev->dev, "msm8974_prepare_us_euro failed (%d)\n",
 			ret);
-
-#ifdef CONFIG_INPUT_MAX14688
+#ifdef CONFIG_SND_FM_RADIO
+	atomic_set(&tert_mi2s_rsc_ref, 0);
+#ifdef CONFIG_SND_FM_SWTICH
+	ret = fm_radio_init();
+	if (ret) {
+		pr_err("%s: fm radio init failed (%d)\n",
+			__func__, ret);
+		goto err;
+	}
+#endif
+#endif
+#if defined(CONFIG_SWITCH_MAX1462X)|| defined(CONFIG_INPUT_MAX14688)
 		mbhc_cfg.insert_detect = false;
 #endif
+
 #ifdef CONFIG_SND_SOC_TPA2015D
 	tpa_amp_node =
 		of_parse_phandle(pdev->dev.of_node, "lge,tpa-amp-phandle", 0);
@@ -3732,6 +4159,9 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err2;
 	}
+
+	dev_info(&pdev->dev, "%s(): done.\n", __func__);
+
 	return 0;
 
 err2:
@@ -3773,10 +4203,16 @@ static int __devexit msm8974_asoc_machine_remove(struct platform_device *pdev)
 		gpio_free(ext_ult_lo_amp_gpio);
 
 	gpio_free(pdata->mclk_gpio);
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+	if (ext_boost_gpio >= 0)
+		gpio_free(ext_boost_gpio);
+#endif
 	gpio_free(pdata->us_euro_gpio);
 	if (gpio_is_valid(ext_spk_amp_gpio))
 		gpio_free(ext_spk_amp_gpio);
-
+#if defined(CONFIG_SND_FM_RADIO) && defined(CONFIG_SND_FM_SWTICH)
+	gpio_free(GPIO_FM_RADIO_SWITCH);
+#endif
 	if (msm8974_liquid_dock_dev != NULL) {
 		if (msm8974_liquid_dock_dev->dock_plug_gpio)
 			gpio_free(msm8974_liquid_dock_dev->dock_plug_gpio);
@@ -3788,7 +4224,9 @@ static int __devexit msm8974_asoc_machine_remove(struct platform_device *pdev)
 		kfree(msm8974_liquid_dock_dev);
 		msm8974_liquid_dock_dev = NULL;
 	}
-
+#ifdef CONFIG_SND_SOC_TPA2028D_STEREO
+	ext_boost_gpio = -1;
+#endif
 	iounmap(pdata->pri_auxpcm_ctrl->mux);
 	iounmap(pdata->sec_auxpcm_ctrl->mux);
 	snd_soc_unregister_card(card);

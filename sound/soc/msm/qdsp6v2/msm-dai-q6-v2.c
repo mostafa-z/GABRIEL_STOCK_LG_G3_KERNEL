@@ -1921,7 +1921,7 @@ fail_cmd:
 }
 
 static DEVICE_ATTR(rtip, 0644, NULL, msm_setrtip_store);
-#endif
+#endif /*CONFIG_SND_SOC_CS35L32*/
 
 static __devinit int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 {

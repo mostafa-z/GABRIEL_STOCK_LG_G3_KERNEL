@@ -99,6 +99,34 @@ static int voc_enable_cvp(uint32_t session_id);
 
 static struct voice_data *voice_get_session_by_idx(int idx);
 
+
+//[AUDIO_BSP_START]minyoung1.kim@lge.com
+static uint32_t audio_start = 0;
+//static String audio_start = "/sys/module/q6voice/parameters/audio_start";
+static int set_start_call(const char *buf, struct kernel_param *kp)
+{
+	audio_start = buf[0] - '0';
+	pr_info("%s: LG audio bsp: set  %d \n", __func__, audio_start);
+
+	return 1;
+}
+
+
+
+static int get_start_call(char *buf, struct kernel_param *kp)
+{
+	int ret = 0;
+
+	ret = sprintf(buf, "%d\n", audio_start);
+	pr_info("%s:LG audio bsp: get  %d \n", __func__, audio_start);
+
+	return ret;
+}
+module_param_call(audio_start,set_start_call, get_start_call, NULL, 0664);
+//[AUDIO_BSP_END]minyoung1.kim@lge.com
+
+
+
 static void voice_itr_init(struct voice_session_itr *itr,
 			   u32 session_id)
 {
@@ -460,7 +488,9 @@ static void init_session_id(void)
 
 static int voice_apr_register(void)
 {
+#if !defined(CONFIG_MACH_MSM8974_T1WIFI_GLOBAL_COM) && !defined(CONFIG_MACH_MSM8974_T1WIFIN_GLOBAL_COM)
 	void *modem_mvm, *modem_cvs, *modem_cvp;
+#endif
 
 	pr_debug("%s\n", __func__);
 
@@ -484,13 +514,15 @@ static int voice_apr_register(void)
 		 * is not stored since it is used only to receive notifications
 		 * and not for communication
 		 */
+#if !defined(CONFIG_MACH_MSM8974_T1WIFI_GLOBAL_COM) && !defined(CONFIG_MACH_MSM8974_T1WIFIN_GLOBAL_COM)
 		modem_mvm = apr_register("MODEM", "MVM",
 						qdsp_mvm_callback,
 						0xFFFFFFFF, &common);
 		if (modem_mvm == NULL)
 			pr_err("%s: Unable to register MVM for MODEM\n",
 					__func__);
-	}
+#endif
+}
 
 	if (common.apr_q6_cvs == NULL) {
 		pr_debug("%s: Start to register CVS callback\n", __func__);
@@ -509,13 +541,14 @@ static int voice_apr_register(void)
 		 * is not stored since it is used only to receive notifications
 		 * and not for communication
 		 */
+#if !defined(CONFIG_MACH_MSM8974_T1WIFI_GLOBAL_COM) && !defined(CONFIG_MACH_MSM8974_T1WIFIN_GLOBAL_COM)
 		modem_cvs = apr_register("MODEM", "CVS",
 						qdsp_cvs_callback,
 						0xFFFFFFFF, &common);
 		 if (modem_cvs == NULL)
 			pr_err("%s: Unable to register CVS for MODEM\n",
 					__func__);
-
+#endif
 	}
 
 	if (common.apr_q6_cvp == NULL) {
@@ -535,13 +568,14 @@ static int voice_apr_register(void)
 		 * is not stored since it is used only to receive notifications
 		 * and not for communication
 		 */
+#if !defined(CONFIG_MACH_MSM8974_T1WIFI_GLOBAL_COM) && !defined(CONFIG_MACH_MSM8974_T1WIFIN_GLOBAL_COM)
 		modem_cvp = apr_register("MODEM", "CVP",
 						qdsp_cvp_callback,
 						0xFFFFFFFF, &common);
 		if (modem_cvp == NULL)
 			pr_err("%s: Unable to register CVP for MODEM\n",
 					__func__);
-
+#endif
 	}
 
 	mutex_unlock(&common.common_lock);
@@ -3509,6 +3543,7 @@ static int voice_destroy_vocproc(struct voice_data *v)
 	v->dev_tx.dev_mute =  common.default_mute_val;
 	v->stream_rx.stream_mute = common.default_mute_val;
 	v->stream_tx.stream_mute = common.default_mute_val;
+	v->music_info.incall_music_mute = common.default_mute_val;
 
 	/* detach VOCPROC and wait for response from mvm */
 	mvm_d_vocproc_cmd.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
@@ -3752,6 +3787,56 @@ static int voice_send_cvs_data_exchange_mode_cmd(struct voice_data *v)
 fail:
 	return -EINVAL;
 }
+
+//[Audio][BSP] sehwan.lee@lge.com phonememo initial code [START]
+static int voice_send_phonememo_mute_cmd(struct voice_data *v)
+{
+	struct cvp_set_mute_cmd cvp_mute_cmd;
+	int ret = 0;
+
+	if (v == NULL) {
+		pr_err("%s: v is NULL\n", __func__);
+		goto fail;
+	}
+
+	if (!common.apr_q6_cvp) {
+		pr_err("%s: apr_cvp is NULL.\n", __func__);
+		goto fail;
+	}
+
+	cvp_mute_cmd.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+						APR_HDR_LEN(APR_HDR_SIZE),
+						APR_PKT_VER);
+	cvp_mute_cmd.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
+					sizeof(cvp_mute_cmd) - APR_HDR_SIZE);
+	cvp_mute_cmd.hdr.src_port = v->session_id;
+	cvp_mute_cmd.hdr.dest_port = voice_get_cvp_handle(v);
+	cvp_mute_cmd.hdr.token = 0;
+	cvp_mute_cmd.hdr.opcode = VSS_IVOLUME_CMD_MUTE_V2;
+	cvp_mute_cmd.cvp_set_mute.direction = VSS_IVOLUME_DIRECTION_TX;
+	cvp_mute_cmd.cvp_set_mute.mute_flag = v->music_info.incall_music_mute;
+	cvp_mute_cmd.cvp_set_mute.ramp_duration_ms = DEFAULT_MUTE_RAMP_DURATION;
+
+	v->cvp_state = CMD_STATUS_FAIL;
+	ret = apr_send_pkt(common.apr_q6_cvp, (uint32_t *) &cvp_mute_cmd);
+	if (ret < 0) {
+		pr_err("%s: Error %d sending rx device cmd\n", __func__, ret);
+		goto fail;
+	}
+	ret = wait_event_timeout(v->cvp_wait,
+				(v->cvp_state == CMD_STATUS_SUCCESS),
+				msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: Command timeout\n", __func__);
+		goto fail;
+	}
+
+	return 0;
+
+fail:
+	return -EINVAL;
+}
+//[Audio][BSP] sehwan.lee@lge.com phonememo initial code [END]
 
 static int voice_send_stream_mute_cmd(struct voice_data *v, uint16_t direction,
 				     uint16_t mute_flag, uint32_t ramp_duration)
@@ -4571,6 +4656,38 @@ int voc_set_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 	return ret;
 }
 
+//[Audio][BSP] sehwan.lee@lge.com phonememo initial code [START]
+int voc_set_phonememo_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute)
+{
+        struct voice_data *v = NULL;
+        int ret = 0;
+        struct voice_session_itr itr;
+
+        voice_itr_init(&itr, session_id);
+        while (voice_itr_get_next_session(&itr, &v)) {
+			if (v != NULL) {
+				mutex_lock(&v->lock);
+
+        v->music_info.incall_music_mute = mute;
+
+				if ((v->voc_state == VOC_RUN) ||
+				(v->voc_state == VOC_CHANGE) ||
+				(v->voc_state == VOC_STANDBY)) {
+					ret = voice_send_phonememo_mute_cmd(v);
+				}
+
+				mutex_unlock(&v->lock);
+
+			} else {
+			pr_err("%s: invalid session_id 0x%x\n", __func__, session_id);
+			ret = -EINVAL;
+			break;
+			}
+        }
+        return ret;
+}
+//[Audio][BSP] sehwan.lee@lge.com phonememo initial code [END]
+
 int voc_set_device_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 			uint32_t ramp_duration)
 {
@@ -4611,6 +4728,50 @@ int voc_set_device_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 
 	return ret;
 }
+
+#ifdef CONFIG_MACH_LGE
+int voc_set_device_mute_lge(uint32_t session_id, uint32_t dir, uint32_t mute,
+			uint32_t ramp_duration)
+{
+	struct voice_data *v = NULL;
+	int ret = 0;
+	struct voice_session_itr itr;
+
+	voice_itr_init(&itr, session_id);
+	while (voice_itr_get_next_session(&itr, &v)) {
+		if (v != NULL) {
+			mutex_lock(&v->lock);
+			if (dir == VSS_IVOLUME_DIRECTION_TX) {
+				v->dev_tx.dev_mute = mute;
+				v->dev_tx.dev_mute_ramp_duration_ms =
+							ramp_duration;
+			} else {
+				v->dev_rx.dev_mute = mute;
+				v->dev_rx.dev_mute_ramp_duration_ms =
+							ramp_duration;
+			}
+
+			if (((v->voc_state == VOC_RUN) ||
+				(v->voc_state == VOC_STANDBY) ||
+				(v->voc_state == VOC_CHANGE)) &&
+				(v->lch_mode == 0))
+				ret = voice_send_device_mute_cmd(v,
+							dir,
+							mute,
+							ramp_duration);
+			mutex_unlock(&v->lock);
+		} else {
+			pr_err("%s: invalid session_id 0x%x\n", __func__,
+				session_id);
+
+			ret = -EINVAL;
+			break;
+		}
+	}
+
+	return ret;
+}
+#endif
 
 int voc_get_rx_device_mute(uint32_t session_id)
 {
@@ -4833,6 +4994,10 @@ int voc_end_voice_call(uint32_t session_id)
 {
 	struct voice_data *v = voice_get_session(session_id);
 	int ret = 0;
+  //[AUDIO_BSP_START]minyoung1.kim@lge.com
+	char temp_buf[2] = "0";
+	set_start_call(temp_buf,NULL);
+  //[AUDIO_BSP_END]minyoung1.kim@lge.com
 
 	if (v == NULL) {
 		pr_err("%s: invalid session_id 0x%x\n", __func__, session_id);
@@ -5081,6 +5246,7 @@ int voc_start_voice_call(uint32_t session_id)
 {
 	struct voice_data *v = voice_get_session(session_id);
 	int ret = 0;
+	char temp_buf[2] = "1";  //[AUDIO_BSP_START]minyoung1.kim@lge.com
 
 	if (v == NULL) {
 		pr_err("%s: invalid session_id 0x%x\n", __func__, session_id);
@@ -5147,6 +5313,12 @@ int voc_start_voice_call(uint32_t session_id)
 			goto fail;
 		}
 		ret = voice_setup_vocproc(v);
+		//[AUDIO_BSP_START]minyoung1.kim@lge.com
+		if(ret == 0){
+			set_start_call(temp_buf,NULL);
+			pr_info("LG audio bsp - stated voice call \n");
+		}
+		//[AUDIO_BSP_END]minyoung1.kim@lge.com
 		if (ret < 0) {
 			pr_err("setup voice failed\n");
 			goto fail;

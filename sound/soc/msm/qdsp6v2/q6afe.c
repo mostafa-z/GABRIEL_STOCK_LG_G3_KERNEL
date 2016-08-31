@@ -17,9 +17,7 @@
 #include <linux/wait.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
-#ifdef CONFIG_SND_SOC_CS35L32
 #include <linux/device.h>
-#endif
 #include <linux/msm_audio_ion.h>
 #include <sound/apr_audio-v2.h>
 #include <sound/q6afe-v2.h>
