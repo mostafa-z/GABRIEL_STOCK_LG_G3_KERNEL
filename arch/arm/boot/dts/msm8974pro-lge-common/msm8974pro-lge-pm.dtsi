@@ -348,10 +348,11 @@
 		wlc_int_gpio = <&pm8941_gpios 34 0x2>;
 		wlc_full_chg = <&pm8941_gpios 36 0x0>;
 	};
-
+/*
 	qcom,msm-thermal {
 		qcom,vdd-apps-rstr{
 			qcom,levels = <0>;
 		};
 	};
+*/
 };
