@@ -1030,6 +1030,11 @@ config TOUCHSCREEN_GT9XX
 
           If unsure, say N.
 
+config STATE_NOTIFIER
+    bool "State Notifier"
+	depends on TOUCHSCREEN_SYNAPTICS_G3
+	default y
+
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
 source "drivers/input/touchscreen/g3/Kconfig"
