@@ -31,18 +31,18 @@
 
 #define MAKO_HOTPLUG "mako_hotplug"
 
-#define DEFAULT_HOTPLUG_ENABLED 0
+#define DEFAULT_HOTPLUG_ENABLED 1
 #define DEFAULT_LOAD_THRESHOLD 80
 #define DEFAULT_HIGH_LOAD_COUNTER 10
 #define DEFAULT_MAX_LOAD_COUNTER 20
 #define DEFAULT_CPUFREQ_UNPLUG_LIMIT 1497600
 #define DEFAULT_MIN_TIME_CPU_ONLINE 1
 #define DEFAULT_TIMER 1
+#define DEFAULT_MAX_FREQ_CAP 1036800
 
 #define MIN_CPU_UP_US (1000 * USEC_PER_MSEC)
 #define NUM_POSSIBLE_CPUS num_possible_cpus()
 #define HIGH_LOAD (90 << 1)
-#define MAX_FREQ_CAP 1036800
 
 struct cpu_stats {
 	unsigned int counter;
@@ -106,6 +106,11 @@ struct hotplug_tunables {
 	 * per second it runs
 	 */
 	unsigned int timer;
+
+	/**
+	 * the maximum frequency when screen is turned off.
+	 */
+	unsigned int screen_off_max;
 } tunables;
 
 static struct workqueue_struct *wq;
@@ -280,7 +285,9 @@ static struct notifier_block cpufreq_notifier = {
 
 static void screen_off_max_freq(int cpu, bool lower_max_freq)
 {
-	stats.freq = lower_max_freq ? MAX_FREQ_CAP : stats.saved_freq;
+	struct hotplug_tunables *t = &tunables;
+
+	stats.freq = lower_max_freq ? t->screen_off_max : stats.saved_freq;
 
 	/*
 	 * This can be 0 on bootup if policy->max is not yet set
@@ -295,7 +302,7 @@ static void screen_off_max_freq(int cpu, bool lower_max_freq)
 	 * If you can reproduce it contact me (/proc/kmsg shows the log for that)
 	 */
 	if (!lower_max_freq) {
-		if (stats.freq <= MAX_FREQ_CAP)
+		if (stats.freq <= t->screen_off_max)
 			stats.freq = LONG_MAX;
 	}
 
@@ -304,8 +311,15 @@ static void screen_off_max_freq(int cpu, bool lower_max_freq)
 
 static void mako_hotplug_suspend(struct work_struct *work)
 {
+	struct hotplug_tunables *t = &tunables;
 	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
 	int cpu;
+
+	if (!t->enabled)
+		return;
+
+	if (stats.suspend)
+		return;
 
 	/*
 	 * Save the current max freq before capping it to 1GHz
@@ -318,11 +332,11 @@ static void mako_hotplug_suspend(struct work_struct *work)
 		stats.saved_freq = policy->max;
 
 	/*
-         * Simple lock not for concurrent accesses, but to prevent
-         * the notifier to trigger a policy limits verify unless we
-         * requested it
-         */
-        stats.screen_cap_lock = true;
+	 * Simple lock not for concurrent accesses, but to prevent
+	 * the notifier to trigger a policy limits verify unless we
+	 * requested it
+	 */
+	stats.screen_cap_lock = true;
 	for_each_online_cpu(cpu) {
 		if (cpu < 2) {
 			screen_off_max_freq(cpu, true);
@@ -341,7 +355,14 @@ static void mako_hotplug_suspend(struct work_struct *work)
 
 static void __ref mako_hotplug_resume(struct work_struct *work)
 {
+	struct hotplug_tunables *t = &tunables;
 	int cpu;
+
+	if (!t->enabled)
+		return;
+
+	if (!stats.suspend)
+		return;
 
 	stats.screen_cap_lock = true;
 	for_each_possible_cpu(cpu) {
@@ -362,6 +383,11 @@ static void __ref mako_hotplug_resume(struct work_struct *work)
 static int lcd_notifier_callback(struct notifier_block *this,
 	unsigned long event, void *data)
 {
+	struct hotplug_tunables *t = &tunables;
+
+	if (!t->enabled)
+		return NOTIFY_OK;
+
 	if (event == LCD_EVENT_ON_START) {
 		if (!stats.booted)
 			stats.booted = true;
@@ -406,7 +432,7 @@ static ssize_t load_threshold_show(struct device *dev,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->load_threshold);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->load_threshold);
 }
 
 static ssize_t load_threshold_store(struct device *dev,
@@ -430,7 +456,7 @@ static ssize_t high_load_counter_show(struct device *dev,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->high_load_counter);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->high_load_counter);
 }
 
 static ssize_t high_load_counter_store(struct device *dev,
@@ -454,7 +480,7 @@ static ssize_t max_load_counter_show(struct device *dev,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->max_load_counter);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->max_load_counter);
 }
 
 static ssize_t max_load_counter_store(struct device *dev,
@@ -478,7 +504,7 @@ static ssize_t cpufreq_unplug_limit_show(struct device *dev,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->cpufreq_unplug_limit);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->cpufreq_unplug_limit);
 }
 
 static ssize_t cpufreq_unplug_limit_store(struct device *dev,
@@ -502,7 +528,7 @@ static ssize_t min_time_cpu_online_show(struct device *dev,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->min_time_cpu_online);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->min_time_cpu_online);
 }
 
 static ssize_t min_time_cpu_online_store(struct device *dev,
@@ -526,7 +552,7 @@ static ssize_t timer_show(struct device *dev, struct device_attribute *attr,
 {
 	struct hotplug_tunables *t = &tunables;
 
-	return snprintf(buf, 10, "%u\n", t->timer);
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->timer);
 }
 
 static ssize_t timer_store(struct device *dev, struct device_attribute *attr,
@@ -545,6 +571,30 @@ static ssize_t timer_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
+static ssize_t screen_off_max_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct hotplug_tunables *t = &tunables;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->screen_off_max);
+}
+
+static ssize_t screen_off_max_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct hotplug_tunables *t = &tunables;
+	int ret;
+	unsigned long new_val;
+
+	ret = kstrtoul(buf, 0, &new_val);
+	if (ret < 0)
+		return ret;
+
+	t->screen_off_max = new_val > ULONG_MAX ? ULONG_MAX : new_val;
+
+	return size;
+}
+
 static DEVICE_ATTR(enabled, 0664, make_hotplug_enabled_show,
 		make_hotplug_enabled_store);
 static DEVICE_ATTR(load_threshold, 0664, load_threshold_show,
@@ -558,6 +608,8 @@ static DEVICE_ATTR(cpufreq_unplug_limit, 0664, cpufreq_unplug_limit_show,
 static DEVICE_ATTR(min_time_cpu_online, 0664, min_time_cpu_online_show,
 		min_time_cpu_online_store);
 static DEVICE_ATTR(timer, 0664, timer_show, timer_store);
+static DEVICE_ATTR(screen_off_max, 0664, screen_off_max_show,
+		screen_off_max_store);
 
 static struct attribute *mako_hotplug_control_attributes[] = {
 	&dev_attr_enabled.attr,
@@ -567,6 +619,7 @@ static struct attribute *mako_hotplug_control_attributes[] = {
 	&dev_attr_cpufreq_unplug_limit.attr,
 	&dev_attr_min_time_cpu_online.attr,
 	&dev_attr_timer.attr,
+	&dev_attr_screen_off_max.attr,
 	NULL
 };
 
@@ -602,6 +655,7 @@ static int __devinit mako_hotplug_probe(struct platform_device *pdev)
 	t->cpufreq_unplug_limit = DEFAULT_CPUFREQ_UNPLUG_LIMIT;
 	t->min_time_cpu_online = DEFAULT_MIN_TIME_CPU_ONLINE;
 	t->timer = DEFAULT_TIMER;
+	t->screen_off_max = DEFAULT_MAX_FREQ_CAP;
 
 	stats.notif.notifier_call = lcd_notifier_callback;
 
