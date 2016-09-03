@@ -1864,6 +1864,14 @@ config MSM_CPUFREQ_LIMITER
 	  module will be called cpufreq_stats.
 	  If in doubt, say Y.
 
+config MSM_HOTPLUG
+	bool "MSM hotplug driver"
+	depends on HOTPLUG_CPU
+	default y
+	help
+	  The MSM hotplug driver controls on-/offlining of additional cores based
+	  on current cpu load.
+
 config MSM_CPU_FREQ_SET_MIN_MAX
 	bool "Set Min/Max CPU frequencies."
 	default n
