@@ -26,6 +26,7 @@ TCUB600=(TOOLCHAIN/UBERTC-6.0/bin/arm-eabi-);
 TCUB700=(TOOLCHAIN/UBERTC-7.0/bin/arm-eabi-);
 TCDR530=(TOOLCHAIN/TC-5.3-Dorimanx/bin/arm-eabi-);
 TCLN494=(TOOLCHAIN/linaro-4.9.4-dorimanx/bin/arm-LG-linux-gnueabi-);
+TCLN490=(TOOLCHAIN/linaro-4.9/bin/arm-eabi-);
 TCLN530=(TOOLCHAIN/linaro-5.3/bin/arm-eabi-);
 KD=$(readlink -f .);
 WD=(WORKING_DIR);
@@ -319,7 +320,7 @@ fi;
 }
 
 echo "Select Toolchain ... ";
-select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-5.3.X LINARO-4.9.4 LINARO-5.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
+select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X LINARO-4.9.x LINARO-5.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
 	case "$CHOICE" in
 		"ARCHI-4.9.3")
 			TC=$TCA493;
@@ -345,11 +346,14 @@ select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-
 		"UBER-7.0.0")
 			TC=$TCUB700;
 			break;;
+		"DORI-LINARO-4.9.4")
+			TC=$TCLN494;
+			break;;
 		"DORI-5.3.X")
 			TC=$TCDR530;
 			break;;
-		"LINARO-4.9.4")
-			TC=$TCLN494;
+		"LINARO-4.9.x")
+			TC=$TCLN490;
 			break;;
 		"LINARO-5.3.x")
 			TC=$TCLN530;
