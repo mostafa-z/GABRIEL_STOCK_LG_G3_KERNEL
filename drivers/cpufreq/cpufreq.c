@@ -559,8 +559,8 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	   will be wrongly overridden */
 	ret = __cpufreq_set_policy(policy, &new_policy);
 
-	if (policy->max > 2803200)
-		policy->max = 2803200;
+	if (policy->max > 2457600)
+		policy->max = 2457600;
 
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
