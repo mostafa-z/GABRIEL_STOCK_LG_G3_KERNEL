@@ -101,7 +101,7 @@ EXPORT_SYMBOL(get_cpu_min_lock);
 void set_cpu_min_lock(unsigned int cpu, int freq)
 {
 	if (cpu >= 0 && cpu < NR_CPUS) {
-		if (freq <= 300000 || freq > 2803200)
+		if (freq <= 300000 || freq > 2457600)
 			lower_limit_freq[cpu] = 0;
 		else
 			lower_limit_freq[cpu] = freq;
@@ -121,7 +121,7 @@ EXPORT_SYMBOL(get_max_lock);
 void set_max_lock(unsigned int cpu, unsigned int freq)
 {
 	if (cpu >= 0 && cpu <= NR_CPUS) {
-		if (freq <= 300000 || freq > 2803200)
+		if (freq <= 300000 || freq > 2457600)
 			upper_limit_freq[cpu] = 0;
 		else
 			upper_limit_freq[cpu] = freq;
@@ -356,7 +356,7 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
 #else
 #ifdef CONFIG_ARCH_MSM8974
-	policy->max = 2265600;
+	policy->max = 2457600;
 	policy->min = 300000;
 #endif
 #endif

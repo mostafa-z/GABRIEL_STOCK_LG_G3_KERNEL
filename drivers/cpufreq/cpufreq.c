@@ -535,7 +535,7 @@ static int apply_max_freq_cpus_limit(unsigned int src_freq)
 static ssize_t store_scaling_max_freq
 (struct cpufreq_policy *policy, const char *buf, size_t count)
 {
-	unsigned int ret, cpu;
+	unsigned int ret;
 #if defined(CONFIG_MULTI_CPU_POLICY_LIMIT) && \
 		defined(CONFIG_MSM_CPUFREQ_LIMITER)
 	unsigned int limited_cpu_freq;
@@ -811,8 +811,8 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	   will be wrongly overridden */
 	ret = __cpufreq_set_policy(policy, &new_policy);
 
-	if (policy->max > 2803200)
-		policy->max = 2803200;
+	if (policy->max > 2457600)
+		policy->max = 2457600;
 
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
