@@ -48,6 +48,8 @@ struct rnd_state {
 
 #ifdef __KERNEL__
 
+extern void rand_initialize_irq(int irq);
+
 extern void add_input_randomness(unsigned int type, unsigned int code,
 				 unsigned int value);
 extern void add_interrupt_randomness(int irq);
