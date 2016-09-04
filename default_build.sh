@@ -262,6 +262,7 @@ if [ -f arch/arm/boot/zImage-dtb ]
 #	\cp -r $WD/$RAMDISK/* $WD/temp
 	\cp -r $WD/ramdisk/* $WD/temp
 	\cp -r $WD/anykernel/* $WD/temp
+	\cp    $WD/$RAMDISK/ramdisk/fstab.g3 $WD/temp/ramdisk/
 
 	echo "copy zImage-dtb and dt.img"
 	echo ""
