@@ -396,7 +396,6 @@
 		qcom,sup-voltages = <2950 2950>;
 		qcom,bus-width = <8>;
 		qcom,nonremovable;
-		com,nonremovable; 
 		qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 
 		qcom,msm-bus,name = "sdcc1";
