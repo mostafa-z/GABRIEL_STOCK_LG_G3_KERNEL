@@ -226,8 +226,10 @@ static inline void mlock_migrate_page(struct page *newpage, struct page *page)
 	}
 }
 
+/*
 extern unsigned long vma_address(struct page *page,
 				 struct vm_area_struct *vma);
+*/
 #else /* !CONFIG_MMU */
 static inline int is_mlocked_vma(struct vm_area_struct *v, struct page *p)
 {
