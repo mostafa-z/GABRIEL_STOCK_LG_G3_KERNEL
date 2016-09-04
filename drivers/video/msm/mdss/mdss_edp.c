@@ -833,7 +833,6 @@ static int edp_event_thread(void *data)
 	struct mdss_edp_drv_pdata *ep;
 	unsigned long flag;
 	u32 todo = 0;
-	int ret;
 
 	ep = (struct mdss_edp_drv_pdata *)data;
 
