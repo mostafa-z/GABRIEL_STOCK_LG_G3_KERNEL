@@ -733,13 +733,13 @@ static long ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case ASHMEM_CACHE_FLUSH_RANGE:
-		ret = ashmem_cache_op(asma, &dmac_flush_range);
+		ret = ashmem_cache_op(asma, dmac_flush_range);
 		break;
 	case ASHMEM_CACHE_CLEAN_RANGE:
-		ret = ashmem_cache_op(asma, &dmac_clean_range);
+		ret = ashmem_cache_op(asma, dmac_clean_range);
 		break;
 	case ASHMEM_CACHE_INV_RANGE:
-		ret = ashmem_cache_op(asma, &dmac_inv_range);
+		ret = ashmem_cache_op(asma, dmac_inv_range);
 		break;
 	}
 
