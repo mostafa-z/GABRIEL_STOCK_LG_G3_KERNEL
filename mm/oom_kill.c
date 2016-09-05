@@ -237,9 +237,7 @@ unsigned int oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
 	 * possible that no single user task uses more than 0.1% of memory and
 	 * no single admin tasks uses more than 3.0%.
 	 */
-	if (points <= 0)
-		return 1;
-	return (points < 1000) ? points : 1000;
+	return points > 0 ? points : 1;
 }
 
 /*
