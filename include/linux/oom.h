@@ -50,10 +50,6 @@ enum oom_scan_t {
 extern void compare_swap_oom_score_adj(short old_val, short new_val);
 extern short test_set_oom_score_adj(short new_val);
 
-<<<<<<< HEAD
-extern unsigned int oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
-			const nodemask_t *nodemask, unsigned long totalpages);
-=======
 extern unsigned long oom_badness(struct task_struct *p,
 		struct mem_cgroup *memcg, const nodemask_t *nodemask,
 		unsigned long totalpages);
@@ -66,7 +62,6 @@ extern void oom_kill_process(struct task_struct *p, gfp_t gfp_mask, int order,
 			     struct mem_cgroup *memcg, nodemask_t *nodemask,
 			     const char *message);
 
->>>>>>> 48b9702... mm, memcg: introduce own oom handler to iterate only over its own threads
 extern int try_set_zonelist_oom(struct zonelist *zonelist, gfp_t gfp_flags);
 extern void clear_zonelist_oom(struct zonelist *zonelist, gfp_t gfp_flags);
 

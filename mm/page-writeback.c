@@ -1652,17 +1652,6 @@ static struct notifier_block __cpuinitdata ratelimit_nb = {
  */
 void __init page_writeback_init(void)
 {
-	dirty_writeback_interval = resume_dirty_writeback_interval =
-		DEFAULT_DIRTY_WRITEBACK_INTERVAL;
-	dirty_expire_interval = resume_dirty_expire_interval =
-		DEFAULT_DIRTY_EXPIRE_INTERVAL;
-	sleep_dirty_writeback_interval = suspend_dirty_writeback_interval =
-		DEFAULT_SUSPEND_DIRTY_WRITEBACK_INTERVAL;
-	sleep_dirty_expire_interval = suspend_dirty_expire_interval =
-		DEFAULT_SUSPEND_DIRTY_EXPIRE_INTERVAL;
-
-	register_power_suspend(&dirty_suspend);
-
 	writeback_set_ratelimit();
 	register_cpu_notifier(&ratelimit_nb);
 

@@ -17,6 +17,7 @@
  *  kernel subsystems and hints as to where to find out what things do.
  */
 
+#define REALLY_WANT_TRACEPOINTS
 #include <linux/oom.h>
 #include <linux/mm.h>
 #include <linux/err.h>
@@ -61,8 +62,13 @@ void compare_swap_oom_score_adj(short old_val, short new_val)
 	struct sighand_struct *sighand = current->sighand;
 
 	spin_lock_irq(&sighand->siglock);
-	if (current->signal->oom_score_adj == old_val)
+	if (current->signal->oom_score_adj == old_val) {
 		current->signal->oom_score_adj = new_val;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+		delete_from_adj_tree(current);
+		add_2_adj_tree(current);
+#endif
+	}
 	trace_oom_score_adj_update(current);
 	spin_unlock_irq(&sighand->siglock);
 }
@@ -83,6 +89,10 @@ short test_set_oom_score_adj(short new_val)
 	spin_lock_irq(&sighand->siglock);
 	old_val = current->signal->oom_score_adj;
 	current->signal->oom_score_adj = new_val;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	delete_from_adj_tree(current);
+	add_2_adj_tree(current);
+#endif
 	trace_oom_score_adj_update(current);
 	spin_unlock_irq(&sighand->siglock);
 
@@ -191,8 +201,8 @@ static bool oom_unkillable_task(struct task_struct *p,
  * predictable as possible.  The goal is to return the highest value for the
  * task consuming the most memory to avoid subsequent oom failures.
  */
-unsigned int oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
-		      const nodemask_t *nodemask, unsigned long totalpages)
+unsigned long oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
+			  const nodemask_t *nodemask, unsigned long totalpages)
 {
 	long points;
 	long adj;
@@ -211,21 +221,11 @@ unsigned int oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
 	}
 
 	/*
-	 * The memory controller may have a limit of 0 bytes, so avoid a divide
-	 * by zero, if necessary.
-	 */
-	if (!totalpages)
-		totalpages = 1;
-
-	/*
 	 * The baseline for the badness score is the proportion of RAM that each
 	 * task's rss, pagetable and swap space use.
 	 */
-	points = get_mm_rss(p->mm) + p->mm->nr_ptes;
-	points += get_mm_counter(p->mm, MM_SWAPENTS);
-
-	points *= 1000;
-	points /= totalpages;
+	points = get_mm_rss(p->mm) + p->mm->nr_ptes +
+		 get_mm_counter(p->mm, MM_SWAPENTS);
 	task_unlock(p);
 
 	/*
@@ -240,9 +240,8 @@ unsigned int oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
 	points += adj;
 
 	/*
-	 * Never return 0 for an eligible task that may be killed since it's
-	 * possible that no single user task uses more than 0.1% of memory and
-	 * no single admin tasks uses more than 3.0%.
+	 * Never return 0 for an eligible task regardless of the root bonus and
+	 * oom_score_adj (oom_score_adj can't be OOM_SCORE_ADJ_MIN here).
 	 */
 	return points > 0 ? points : 1;
 }
@@ -355,7 +354,7 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 {
 	struct task_struct *g, *p;
 	struct task_struct *chosen = NULL;
-	*ppoints = 0;
+	unsigned long chosen_points = 0;
 
 	rcu_read_lock();
 	for_each_process_thread(g, p) {
@@ -389,6 +388,7 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 		get_task_struct(chosen);
 	rcu_read_unlock();
 
+	*ppoints = chosen_points * 1000 / totalpages;
 	return chosen;
 }
 
@@ -424,7 +424,7 @@ void dump_tasks(const struct mem_cgroup *memcg, const nodemask_t *nodemask)
 			continue;
 		}
 
-		pr_info("[%5d] %5d %5d %8lu %8lu %3u     %3d         %5hd %s\n",
+		pr_info("[%5d] %5d %5d %8lu %8lu %3u     %3d       %5hd %s\n",
 			task->pid, task_uid(task), task->tgid,
 			task->mm->total_vm, get_mm_rss(task->mm),
 			task_cpu(task), task->signal->oom_adj,
@@ -449,6 +449,23 @@ static void dump_header(struct task_struct *p, gfp_t gfp_mask, int order,
 	show_mem(SHOW_MEM_FILTER_NODES);
 	if (sysctl_oom_dump_tasks)
 		dump_tasks(memcg, nodemask);
+}
+
+/*
+ * Number of OOM killer invocations (including memcg OOM killer).
+ * Primarily used by PM freezer to check for potential races with
+ * OOM killed frozen task.
+ */
+static atomic_t oom_kills = ATOMIC_INIT(0);
+
+int oom_kills_count(void)
+{
+	return atomic_read(&oom_kills);
+}
+
+void note_oom_kill(void)
+{
+	atomic_inc(&oom_kills);
 }
 
 #define K(x) ((x) << (PAGE_SHIFT-10))
@@ -594,20 +611,20 @@ void check_panic_on_oom(enum oom_constraint constraint, gfp_t gfp_mask,
 
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR
 void mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
-			      int order)
+                             int order)
 {
-	/*
-	 * If current has a pending SIGKILL, then automatically select it.  The
-	 * goal is to allow it to allocate so that it may quickly exit and free
-	 * its memory.
-	 */
-	if (fatal_signal_pending(current)) {
-		set_thread_flag(TIF_MEMDIE);
-		return;
-	}
+       /*
+        * If current has a pending SIGKILL, then automatically select it.  The
+        * goal is to allow it to allocate so that it may quickly exit and free
+        * its memory.
+        */
+       if (fatal_signal_pending(current)) {
+               set_thread_flag(TIF_MEMDIE);
+               return;
+       }
 
-	check_panic_on_oom(CONSTRAINT_MEMCG, gfp_mask, order, NULL);
-	__mem_cgroup_out_of_memory(memcg, gfp_mask, order);
+       check_panic_on_oom(CONSTRAINT_MEMCG, gfp_mask, order, NULL);
+       __mem_cgroup_out_of_memory(memcg, gfp_mask, order);
 }
 #endif
 
