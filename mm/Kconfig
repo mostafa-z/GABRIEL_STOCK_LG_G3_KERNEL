@@ -435,7 +435,7 @@ config ZCACHE
 	depends on CRYPTO && CLEANCACHE
 	select CRYPTO_LZO
 	select ZBUD
-	default n
+	default y
 	help
 	  A compressed cache for file pages.
 	  It takes active file pages that are in the process of being reclaimed
