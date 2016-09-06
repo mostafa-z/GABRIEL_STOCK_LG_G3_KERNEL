@@ -208,7 +208,6 @@ static bool avoid_to_kill(uid_t uid)
 		return 1;
 	return 0;
 }
-
 static bool protected_apps(char *comm)
 {
 	if (strcmp(comm, "d.process.acore") == 0 ||
@@ -474,11 +473,11 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 
 	other_free = global_page_state(NR_FREE_PAGES);
 
-	if (global_page_state(NR_SHMEM) + total_swapcache_pages <
+	if (global_page_state(NR_SHMEM) + total_swapcache_pages() <
 		global_page_state(NR_FILE_PAGES))
 		other_file = global_page_state(NR_FILE_PAGES) -
 						global_page_state(NR_SHMEM) -
-						total_swapcache_pages;
+						total_swapcache_pages();
 	else
 		other_file = 0;
 
@@ -738,7 +737,7 @@ static struct notifier_block tsk_migration_nb = {
 static int __init lowmem_init(void)
 {
 	register_shrinker(&lowmem_shrinker);
-	register_power_suspend(&low_mem_suspend);
+	vmpressure_notifier_register(&lmk_vmpr_nb);
 	register_power_suspend(&low_mem_suspend);
 #ifdef CONFIG_ANDROID_BG_SCAN_MEM
 	raw_notifier_chain_register(&bgtsk_migration_notifier_head,
@@ -939,4 +938,3 @@ module_init(lowmem_init);
 module_exit(lowmem_exit);
 
 MODULE_LICENSE("GPL");
-
