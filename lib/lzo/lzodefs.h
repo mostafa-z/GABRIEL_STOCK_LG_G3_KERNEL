@@ -15,6 +15,33 @@
 #define LZO_VERSION_STRING	"2.02"
 #define LZO_VERSION_DATE	"Oct 17 2005"
 
+#if 1 && defined(__arm__) && ((__LINUX_ARM_ARCH__ >= 6) || defined(__ARM_FEATURE_UNALIGNED))
+#define CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS 1
+#define COPY4(dst, src)	\
+		* (u32 *) (void *) (dst) = * (const u32 *) (const void *) (src)
+#else
+#define COPY4(dst, src)	\
+		put_unaligned(get_unaligned((const u32 *)(src)), (u32 *)(dst))
+#endif
+#if defined(__x86_64__)
+#define COPY8(dst, src)	\
+		put_unaligned(get_unaligned((const u64 *)(src)), (u64 *)(dst))
+#else
+#define COPY8(dst, src)	\
+		COPY4(dst, src); COPY4((dst) + 4, (src) + 4)
+#endif
+
+#if defined(__BIG_ENDIAN) && defined(__LITTLE_ENDIAN)
+#error "conflicting endian definitions"
+#elif defined(__x86_64__)
+#define LZO_USE_CTZ64	1
+#define LZO_USE_CTZ32	1
+#elif defined(__i386__) || defined(__powerpc__)
+#define LZO_USE_CTZ32	1
+#elif defined(__arm__) && (__LINUX_ARM_ARCH__ >= 5)
+#define LZO_USE_CTZ32	1
+#endif
+
 #define M1_MAX_OFFSET	0x0400
 #define M2_MAX_OFFSET	0x0800
 #define M3_MAX_OFFSET	0x4000
