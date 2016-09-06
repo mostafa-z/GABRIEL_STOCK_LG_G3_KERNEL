@@ -44,6 +44,7 @@
 #include <linux/swap.h>
 #include <linux/powersuspend.h>
 #include <linux/fs.h>
+#include <linux/zcache.h>
 #include <linux/cpuset.h>
 #include <linux/show_mem_notifier.h>
 #include <linux/vmpressure.h>
@@ -309,7 +310,7 @@ void tune_lmk_zone_param(struct zonelist *zonelist, int classzone_idx,
 		zone_idx = zonelist_zone_idx(zoneref);
 		za = &zall[node_idx][zone_idx];
 		za->free = zone_page_state(zone, NR_FREE_PAGES);
-		za->file = zone_page_state(zone, NR_FILE_PAGES)
+		za->file = zone_page_state(zone, NR_FILE_PAGES) + zcache_pages()
 					- zone_page_state(zone, NR_SHMEM)
 					- zone_page_state(zone, NR_SWAPCACHE);
 		if (zone_idx == ZONE_MOVABLE) {
@@ -500,8 +501,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	other_free = global_page_state(NR_FREE_PAGES) - totalreserve_pages;
 
 	if (global_page_state(NR_SHMEM) + total_swapcache_pages() <
-		global_page_state(NR_FILE_PAGES))
-		other_file = global_page_state(NR_FILE_PAGES) -
+		global_page_state(NR_FILE_PAGES) + zcache_pages())
+		other_file = global_page_state(NR_FILE_PAGES) + zcache_pages() -
 						global_page_state(NR_SHMEM) -
 						total_swapcache_pages();
 	else
