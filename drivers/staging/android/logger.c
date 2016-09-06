@@ -29,6 +29,9 @@
 
 #include <asm/ioctls.h>
 
+static unsigned int enabled = 1;
+module_param(enabled, uint, S_IWUSR | S_IRUGO);
+
 #ifndef CONFIG_LOGCAT_SIZE
 #define CONFIG_LOGCAT_SIZE 256
 #endif
@@ -455,6 +458,9 @@ ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct logger_entry header;
 	struct timespec now;
 	ssize_t ret = 0;
+
+	if (!enabled)
+		return 0;
 
 	now = current_kernel_time();
 
