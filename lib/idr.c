@@ -43,6 +43,14 @@ static DEFINE_PER_CPU(struct idr_layer *, idr_preload_head);
 static DEFINE_PER_CPU(int, idr_preload_cnt);
 static DEFINE_SPINLOCK(simple_ida_lock);
 
+/* the maximum ID which can be allocated given idr->layers */
+static int idr_max(int layers)
+{
+	int bits = min_t(int, layers * IDR_BITS, MAX_IDR_SHIFT);
+
+	return (1 << bits) - 1;
+}
+
 static struct idr_layer *get_from_free_list(struct idr *idp)
 {
 	struct idr_layer *p;
@@ -361,7 +369,7 @@ static void idr_fill_slot(void *ptr, int id, struct idr_layer **pa)
  */
 int idr_get_new_above(struct idr *idp, void *ptr, int starting_id, int *id)
 {
-	struct idr_layer *pa[MAX_IDR_LEVEL];
+	struct idr_layer *pa[MAX_IDR_LEVEL + 1];
 	int rv;
 
 	rv = idr_get_empty_slot(idp, starting_id, pa, 0, idp);
@@ -457,7 +465,7 @@ EXPORT_SYMBOL(idr_preload);
 int idr_alloc(struct idr *idr, void *ptr, int start, int end, gfp_t gfp_mask)
 {
 	int max = end > 0 ? end - 1 : INT_MAX;	/* inclusive upper limit */
-	struct idr_layer *pa[MAX_IDR_LEVEL];
+	struct idr_layer *pa[MAX_IDR_LEVEL + 1];
 	int id;
 
 	might_sleep_if(gfp_mask & __GFP_WAIT);
