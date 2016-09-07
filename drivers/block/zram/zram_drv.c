@@ -164,8 +164,6 @@ static ssize_t comp_algorithm_show(struct device *dev,
 	return sz;
 }
 
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-=======
 static ssize_t comp_algorithm_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
@@ -182,7 +180,6 @@ static ssize_t comp_algorithm_store(struct device *dev,
 }
 
 /* flag operations needs meta->tb_lock */
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 static int zram_test_flag(struct zram_meta *meta, u32 index,
 			enum zram_pageflags flag)
 {
@@ -355,12 +352,7 @@ static int zram_decompress_page(struct zram *zram, char *mem, u32 index)
 	if (size == PAGE_SIZE)
 		copy_page(mem, cmem);
 	else
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-		ret = lzo1x_decompress_safe(cmem, meta->table[index].size,
-						mem, &clen);
-=======
 		ret = zcomp_decompress(zram->comp, cmem, size, mem);
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 	zs_unmap_object(meta->mem_pool, handle);
 	read_unlock(&meta->tb_lock);
 
@@ -479,21 +471,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 		goto out;
 	}
 
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-	/*
-	 * zram_slot_free_notify could miss free so that let's
-	 * double check.
-	 */
-	if (unlikely(meta->table[index].handle ||
-			zram_test_flag(meta, index, ZRAM_ZERO)))
-		zram_free_page(zram, index);
-
-	ret = lzo1x_1_compress(uncmem, PAGE_SIZE, src, &clen,
-			       meta->compress_workmem);
-
-=======
 	ret = zcomp_compress(zram->comp, zstrm, uncmem, &clen);
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 	if (!is_partial_io(bvec)) {
 		kunmap_atomic(user_mem);
 		user_mem = NULL;
@@ -649,35 +627,6 @@ static void zram_reset_device(struct zram *zram, bool reset_capacity)
 	up_write(&zram->init_lock);
 }
 
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-static void zram_init_device(struct zram *zram, struct zram_meta *meta)
-{
-	if (zram->disksize > 2 * (totalram_pages << PAGE_SHIFT)) {
-		pr_info(
-		"There is little point creating a zram of greater than "
-		"twice the size of memory since we expect a 2:1 compression "
-		"ratio. Note that zram uses about 0.1%% of the size of "
-		"the disk when not in use so a huge zram is "
-		"wasteful.\n"
-		"\tMemory Size: %lu kB\n"
-		"\tSize you selected: %llu kB\n"
-		"Continuing anyway ...\n",
-		(totalram_pages << PAGE_SHIFT) >> 10, zram->disksize >> 10
-		);
-	}
-
-	/* zram devices sort of resembles non-rotational disks */
-	queue_flag_set_unlocked(QUEUE_FLAG_NONROT, zram->disk->queue);
-	queue_flag_clear_unlocked(QUEUE_FLAG_ADD_RANDOM, zram->disk->queue);
-
-	zram->meta = meta;
-	zram->init_done = 1;
-
-	pr_debug("Initialization done!\n");
-}
-
-=======
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 static ssize_t disksize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
@@ -693,8 +642,6 @@ static ssize_t disksize_store(struct device *dev,
 
 	disksize = PAGE_ALIGN(disksize);
 	meta = zram_meta_alloc(disksize);
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-=======
 	if (!meta)
 		return -ENOMEM;
 
@@ -706,7 +653,6 @@ static ssize_t disksize_store(struct device *dev,
 		goto out_free_meta;
 	}
 
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 	down_write(&zram->init_lock);
 	if (init_done(zram)) {
 		pr_info("Cannot change disksize for initialized device\n");
@@ -740,28 +686,30 @@ static ssize_t reset_store(struct device *dev,
 	zram = dev_to_zram(dev);
 	bdev = bdget_disk(zram->disk, 0);
 
+	if (!bdev)
+		return -ENOMEM;
+
 	/* Do not reset an active device! */
-	if (bdev->bd_holders)
-		return -EBUSY;
+	if (bdev->bd_holders) {
+		ret = -EBUSY;
+		goto out;
+	}
 
 	ret = kstrtou16(buf, 10, &do_reset);
 	if (ret)
-		return ret;
+		goto out;
 
-	if (!do_reset)
-		return -EINVAL;
+	if (!do_reset) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* Make sure all pending I/O is finished */
-	if (bdev)
-		fsync_bdev(bdev);
+	fsync_bdev(bdev);
+	bdput(bdev);
 
 	zram_reset_device(zram, true);
 	return len;
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-}
-
-static void __zram_make_request(struct zram *zram, struct bio *bio, int rw)
-=======
 
 out:
 	bdput(bdev);
@@ -769,7 +717,6 @@ out:
 }
 
 static void __zram_make_request(struct zram *zram, struct bio *bio)
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 {
 	int i, offset;
 	u32 index;
@@ -872,8 +819,6 @@ static DEVICE_ATTR(initstate, S_IRUGO, initstate_show, NULL);
 static DEVICE_ATTR(reset, S_IWUSR, NULL, reset_store);
 static DEVICE_ATTR(orig_data_size, S_IRUGO, orig_data_size_show, NULL);
 static DEVICE_ATTR(mem_used_total, S_IRUGO, mem_used_total_show, NULL);
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-=======
 static DEVICE_ATTR(max_comp_streams, S_IRUGO | S_IWUSR,
 		max_comp_streams_show, max_comp_streams_store);
 static DEVICE_ATTR(comp_algorithm, S_IRUGO | S_IWUSR,
@@ -887,7 +832,6 @@ ZRAM_ATTR_RO(invalid_io);
 ZRAM_ATTR_RO(notify_free);
 ZRAM_ATTR_RO(zero_pages);
 ZRAM_ATTR_RO(compr_data_size);
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 
 static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_disksize.attr,
@@ -903,11 +847,8 @@ static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_orig_data_size.attr,
 	&dev_attr_compr_data_size.attr,
 	&dev_attr_mem_used_total.attr,
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.c
-=======
 	&dev_attr_max_comp_streams.attr,
 	&dev_attr_comp_algorithm.attr,
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.c
 	NULL,
 };
 
@@ -1088,4 +1029,3 @@ MODULE_PARM_DESC(num_devices, "Number of zram devices");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Nitin Gupta <ngupta@vflare.org>");
 MODULE_DESCRIPTION("Compressed RAM Block Device");
-MODULE_ALIAS("devname:zram");

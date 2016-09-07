@@ -101,10 +101,7 @@ struct zram {
 	u64 disksize;	/* bytes */
 	int max_comp_streams;
 	struct zram_stats stats;
-<<<<<<< HEAD:drivers/staging/zram/zram_drv.h
-=======
 	char compressor[10];
->>>>>>> 6793c3b... ZRAM + ZSMALLOC: merged TONS of commits from 3.10.y :):drivers/block/zram/zram_drv.h
 };
 
 #endif
