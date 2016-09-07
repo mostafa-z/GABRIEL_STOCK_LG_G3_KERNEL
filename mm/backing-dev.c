@@ -225,7 +225,7 @@ static ssize_t max_ratio_store(struct device *dev,
 }
 BDI_SHOW(max_ratio, bdi->max_ratio)
 
-#define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
+/* #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store) */
 
 static struct device_attribute bdi_dev_attrs[] = {
 	__ATTR_RW(read_ahead_kb),
