@@ -654,6 +654,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 				"   Total reserve is %ldkB\n" \
 				"   Total free pages is %ldkB\n" \
 				"   Total file cache is %ldkB\n" \
+				"   Total zcache is %ldkB\n" \
 				"   Slab Reclaimable is %ldkB\n" \
 				"   Slab UnReclaimable is %ldkB\n" \
 				"   Total Slab is %ldkB\n" \
@@ -672,6 +673,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 				(long)(PAGE_SIZE / 1024),
 			     global_page_state(NR_FILE_PAGES) *
 				(long)(PAGE_SIZE / 1024),
+				(long)zcache_pages() * (long)(PAGE_SIZE / 1024),
 			     global_page_state(NR_SLAB_RECLAIMABLE) *
 				(long)(PAGE_SIZE / 1024),
 			     global_page_state(NR_SLAB_UNRECLAIMABLE) *
