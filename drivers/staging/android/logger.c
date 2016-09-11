@@ -33,7 +33,7 @@ static unsigned int enabled = 1;
 module_param(enabled, uint, S_IWUSR | S_IRUGO);
 
 #ifndef CONFIG_LOGCAT_SIZE
-#define CONFIG_LOGCAT_SIZE 256
+#define CONFIG_LOGCAT_SIZE 32
 #endif
 
 /*
