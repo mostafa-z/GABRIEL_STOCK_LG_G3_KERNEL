@@ -87,7 +87,7 @@ static struct notifier_block dcache_state_notif;
 int sysctl_vfs_cache_pressure __read_mostly = 100;
 
 #ifdef CONFIG_STATE_NOTIFIER
-static int suspend_cache_pressure = 60;
+static int suspend_cache_pressure = 10;
 static int resume_cache_pressure = 100;
 #endif
 
