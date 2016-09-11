@@ -36,7 +36,11 @@
 #include <linux/pagevec.h>
 #include <linux/mm_inline.h>
 #include <trace/events/writeback.h>
-#include <linux/powersuspend.h>
+
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+static struct notifier_block writeback_state_notif;
+#endif
 
 #include "internal.h"
 
@@ -1784,22 +1788,29 @@ static struct notifier_block __cpuinitdata ratelimit_nb = {
 	.next		= NULL,
 };
 
-static void dirty_early_suspend(struct power_suspend *handler)
+#ifdef CONFIG_STATE_NOTIFIER
+static int state_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
 {
-	dirty_writeback_interval = suspend_dirty_writeback_interval;
-	dirty_expire_interval = suspend_dirty_expire_interval;
+	switch (event) {
+		case STATE_NOTIFIER_ACTIVE:
+			dirty_writeback_interval =
+				resume_dirty_writeback_interval;
+			dirty_expire_interval = resume_dirty_expire_interval;
+			break;
+		case STATE_NOTIFIER_SUSPEND:
+			dirty_writeback_interval =
+				suspend_dirty_writeback_interval;
+			dirty_expire_interval = suspend_dirty_expire_interval;
+			break;
+		default:
+			break;
+	}
+
+		return NOTIFY_OK;
 }
 
-static void dirty_late_resume(struct power_suspend *handler)
-{
-	dirty_writeback_interval = resume_dirty_writeback_interval;
-	dirty_expire_interval = resume_dirty_expire_interval;
-}
-
-static struct power_suspend dirty_suspend = {
-	.suspend = dirty_early_suspend,
-	.resume = dirty_late_resume,
-};
+#endif
 
 /*
  * Called early on to tune the page writeback dirty limits.
@@ -1829,8 +1840,13 @@ void __init page_writeback_init(void)
 		DEFAULT_SUSPEND_DIRTY_WRITEBACK_INTERVAL;
 	sleep_dirty_expire_interval = suspend_dirty_expire_interval =
 		DEFAULT_SUSPEND_DIRTY_EXPIRE_INTERVAL;
+#ifdef CONFIG_STATE_NOTIFIER
+	writeback_state_notif.notifier_call = state_notifier_callback;
+	if (state_register_client(&writeback_state_notif))
+		pr_err("%s: Failed to register State notifier callback\n",
+			__func__);
+#endif
 
-	register_power_suspend(&dirty_suspend);
 	writeback_set_ratelimit();
 	register_cpu_notifier(&ratelimit_nb);
 
