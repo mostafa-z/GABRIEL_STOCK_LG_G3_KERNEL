@@ -392,6 +392,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security -Wno-deprecated-declarations \
 		   -fno-delete-null-pointer-checks \
+		   -Wno-tautological-compare -Wno-unused-const-variable -Wno-array-bounds -Wno-bool-compare \
 		   -std=gnu89 -fno-pic \
 		    $(GEN_OPT_FLAGS)
 
