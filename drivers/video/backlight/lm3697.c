@@ -27,6 +27,10 @@
 
 #include <mach/board_lge.h>
 
+#ifdef CONFIG_FB_MSM_MDSS
+#include <linux/lcd_notify.h>
+#endif
+
 /*
  * debug = 1 will print all
  */
@@ -247,6 +251,10 @@ void lm3697_lcd_backlight_set_level(int level)
 			// if zzmoove governor is defined call external suspend function
 			zzmoove_suspend();
 #endif
+#ifdef CONFIG_FB_MSM_MDSS
+			lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
+			lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
+#endif
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
@@ -259,6 +267,10 @@ void lm3697_lcd_backlight_set_level(int level)
 #ifdef CONFIG_CPU_FREQ_GOV_ZZMOOVE
 			// if zzmoove governor is defined call external resume function
 			zzmoove_resume();
+#endif
+#ifdef CONFIG_FB_MSM_MDSS
+			lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
+			lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
 #endif
 	}
 
