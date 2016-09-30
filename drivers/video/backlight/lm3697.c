@@ -243,6 +243,10 @@ void lm3697_lcd_backlight_set_level(int level)
 			// if dynamic fsync is defined call external suspend function
 			dyn_fsync_suspend();
 #endif
+#ifdef CONFIG_CPU_FREQ_GOV_ZZMOOVE
+			// if zzmoove governor is defined call external suspend function
+			zzmoove_suspend();
+#endif
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
@@ -251,7 +255,11 @@ void lm3697_lcd_backlight_set_level(int level)
 #ifdef CONFIG_DYNAMIC_FSYNC
 			// if dynamic fsync is defined call external resume function
 			dyn_fsync_resume();
-#endif	
+#endif
+#ifdef CONFIG_CPU_FREQ_GOV_ZZMOOVE
+			// if zzmoove governor is defined call external resume function
+			zzmoove_resume();
+#endif
 	}
 
 	if (ret)
