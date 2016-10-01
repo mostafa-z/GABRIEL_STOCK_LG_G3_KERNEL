@@ -23,12 +23,20 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/moduleparam.h>
+#include <linux/display_state.h>
 
 #include <mach/board_lge.h>
 
 #ifdef CONFIG_FB_MSM_MDSS
 #include <linux/lcd_notify.h>
 #endif
+
+bool display_on = true;
+
+bool is_display_on()
+{
+	return display_on;
+}
 
 /*
  * debug = 1 will print all
@@ -242,6 +250,7 @@ void lm3697_lcd_backlight_set_level(int level)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
 			dprintk("[LM3697] backlight is off ...\n");
 			sleep_state = 1;
+			display_on = false;
 #ifdef CONFIG_FB_MSM_MDSS
 			lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
 			lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
@@ -251,6 +260,7 @@ void lm3697_lcd_backlight_set_level(int level)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
 			dprintk("[LM3697] backlight is on ...\n");
 			sleep_state = 0;
+			display_on = true;
 #ifdef CONFIG_FB_MSM_MDSS
 			lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
 			lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);

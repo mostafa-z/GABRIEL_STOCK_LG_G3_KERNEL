@@ -21,7 +21,6 @@
 #include <linux/gpio.h>
 #include <linux/err.h>
 #include <linux/regulator/consumer.h>
-#include <linux/display_state.h>
 
 #include "mdss.h"
 #include "mdss_panel.h"
@@ -33,13 +32,6 @@
 #define NUM_MAX_VREG 3
 extern struct mdss_panel_data *pdata_base;
 #endif
-
-bool display_on = true;
-
-bool is_display_on()
-{
-	return display_on;
-}
 
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
@@ -1214,7 +1206,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
-			display_on = true;
 		break;
 	case MDSS_EVENT_BLANK:
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
@@ -1224,7 +1215,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_blank(pdata);
-			display_on = false;
 		rc = mdss_dsi_off(pdata);
 		break;
 	case MDSS_EVENT_CONT_SPLASH_FINISH:
