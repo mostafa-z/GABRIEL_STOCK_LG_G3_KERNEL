@@ -31,6 +31,10 @@
 #include <linux/lcd_notify.h>
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 bool display_on = true;
 
 bool is_display_on()
@@ -255,6 +259,9 @@ void lm3697_lcd_backlight_set_level(int level)
 			lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
 			lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
 #endif
+#ifdef CONFIG_POWERSUSPEND
+			set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
@@ -264,6 +271,9 @@ void lm3697_lcd_backlight_set_level(int level)
 #ifdef CONFIG_FB_MSM_MDSS
 			lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
 			lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
+#endif
+#ifdef CONFIG_POWERSUSPEND
+			set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
 #endif
 	}
 
