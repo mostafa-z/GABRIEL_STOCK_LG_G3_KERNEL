@@ -141,7 +141,8 @@ module_param_cb(input_boost_freq, &param_ops_input_boost_freq, NULL, 0644);
  * again each time the CPU comes back up. We can use CPUFREQ_START to figure
  * out a CPU is coming online instead of registering for hotplug notifiers.
  */
-static int boost_adjust_notify(struct notifier_block *nb, unsigned long val, void *data)
+static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
+				void *data)
 {
 	struct cpufreq_policy *policy = data;
 	unsigned int cpu = policy->cpu;
@@ -230,9 +231,9 @@ static int boost_mig_sync_thread(void *data)
 	unsigned long flags;
 	unsigned int req_freq;
 
-	while(1) {
-		wait_event_interruptible(s->sync_wq, s->pending ||
-					kthread_should_stop());
+	while (1) {
+		wait_event_interruptible(s->sync_wq,
+					s->pending || kthread_should_stop());
 
 		if (kthread_should_stop())
 			break;
@@ -267,6 +268,17 @@ static int boost_mig_sync_thread(void *data)
 
 		/* Force policy re-evaluation to trigger adjust notifier. */
 		get_online_cpus();
+		if (cpu_online(src_cpu))
+			/*
+			 * Send an unchanged policy update to the source
+			 * CPU. Even though the policy isn't changed from
+			 * its existing boosted or non-boosted state
+			 * notifying the source CPU will let the governor
+			 * know a boost happened on another CPU and that it
+			 * should re-evaluate the frequency at the next timer
+			 * event without interference from a min sample time.
+			 */
+			cpufreq_update_policy(src_cpu);
 		if (cpu_online(dest_cpu)) {
 			cpufreq_update_policy(dest_cpu);
 			queue_delayed_work_on(dest_cpu, cpu_boost_wq,
@@ -303,7 +315,6 @@ static int boost_migration_notify(struct notifier_block *nb,
 		return NOTIFY_OK;
 
 	pr_debug("Migration: CPU%d --> CPU%d\n", mnd->src_cpu, mnd->dest_cpu);
-
 	spin_lock_irqsave(&s->lock, flags);
 	s->pending = true;
 	s->src_cpu = mnd->src_cpu;
@@ -356,8 +367,8 @@ static void cpuboost_input_event(struct input_handle *handle,
 	if (!input_boost_enabled)
 		return;
 
-	if (!cpu_boost)
-		return;
+    if (!cpu_boost)
+        return;
 
 	now = ktime_to_us(ktime_get());
 	if (now - last_input_time < MIN_INPUT_INTERVAL)
