@@ -1,4 +1,5 @@
-/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+/* 
+ * Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,16 +20,22 @@
 #include <linux/io.h>
 #include <linux/ftrace.h>
 #include <linux/msm_adreno_devfreq.h>
+#include <linux/state_notifier.h>
 #include <mach/scm.h>
+
 #include "governor.h"
 
 static DEFINE_SPINLOCK(tz_lock);
+
+/* State notifier hook */
+static struct notifier_block adreno_tz_state_notif;
 
 /*
  * FLOOR is 5msec to capture up to 3 re-draws
  * per frame for 60fps content.
  */
 #define FLOOR		        5000
+
 /*
  * MIN_BUSY is 1 msec for the sample to be sent
  */
@@ -61,26 +68,33 @@ static DEFINE_SPINLOCK(tz_lock);
 static unsigned int tz_target = TARGET;
 static unsigned int tz_cap = CAP;
 
+/* Boolean to detect if panel has gone off */
+static bool power_suspended = false;
+
 /* Trap into the TrustZone, and call funcs there. */
 static int __secure_tz_entry2(u32 cmd, u32 val1, u32 val2)
 {
 	int ret;
+
 	spin_lock(&tz_lock);
 	/* sync memory before sending the commands to tz*/
 	__iowmb();
 	ret = scm_call_atomic2(SCM_SVC_IO, cmd, val1, val2);
 	spin_unlock(&tz_lock);
+
 	return ret;
 }
 
 static int __secure_tz_entry3(u32 cmd, u32 val1, u32 val2, u32 val3)
 {
 	int ret;
+
 	spin_lock(&tz_lock);
 	/* sync memory before sending the commands to tz*/
 	__iowmb();
 	ret = scm_call_atomic3(SCM_SVC_IO, cmd, val1, val2, val3);
 	spin_unlock(&tz_lock);
+
 	return ret;
 }
 
@@ -126,8 +140,24 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		return result;
 	}
 
+	/* Prevent overflow */
+	if (stats.busy_time >= (1 << 24) || stats.total_time >= (1 << 24)) {
+		stats.busy_time >>= 7;
+		stats.total_time >>= 7;
+	}
+
 	*freq = stats.current_frequency;
 	*flag = 0;
+
+	/*
+	 * Force to use & record as min freq when system has
+	 * entered pm-suspend or screen-off state.
+	 */
+	if (power_suspended) {
+		*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
+		return 0;
+	}
+
 	priv->bin.total_time += stats.total_time;
 	priv->bin.busy_time += stats.busy_time;
 	if (priv->bus.num) {
@@ -176,13 +206,13 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		frame_flag = 0;
 	} else {
 #ifdef CONFIG_SIMPLE_GPU_ALGORITHM
-		if (simple_gpu_active != 0)
-			val = simple_gpu_algorithm(level, priv);
-		else
-			val = __secure_tz_entry3(TZ_UPDATE_ID,
-					level,
-					priv->bin.total_time,
-					priv->bin.busy_time);
+	if (simple_gpu_active != 0)
+		val = simple_gpu_algorithm(level, priv);
+	else
+		val = __secure_tz_entry3(TZ_UPDATE_ID,
+				level,
+				priv->bin.total_time,
+				priv->bin.busy_time);
 #else
 		val = __secure_tz_entry3(TZ_UPDATE_ID,
 				level,
@@ -200,7 +230,7 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 	if (val) {
 		level += val;
 		level = max(level, 0);
-		level = min_t(int, level, devfreq->profile->max_state);
+		level = min_t(int, level, devfreq->profile->max_state - 1);
 		goto clear;
 	}
 
@@ -251,17 +281,18 @@ static int tz_notify(struct notifier_block *nb, unsigned long type, void *devp)
 	struct devfreq *devfreq = devp;
 
 	switch (type) {
-	case ADRENO_DEVFREQ_NOTIFY_IDLE:
-	case ADRENO_DEVFREQ_NOTIFY_RETIRE:
-		mutex_lock(&devfreq->lock);
-		result = update_devfreq(devfreq);
-		mutex_unlock(&devfreq->lock);
-		break;
-	/* ignored by this governor */
-	case ADRENO_DEVFREQ_NOTIFY_SUBMIT:
-	default:
-		break;
+		case ADRENO_DEVFREQ_NOTIFY_IDLE:
+		case ADRENO_DEVFREQ_NOTIFY_RETIRE:
+			mutex_lock(&devfreq->lock);
+			result = update_devfreq(devfreq);
+			mutex_unlock(&devfreq->lock);
+			break;
+		/* ignored by this governor */
+		case ADRENO_DEVFREQ_NOTIFY_SUBMIT:
+		default:
+			break;
 	}
+
 	return notifier_from_errno(result);
 }
 
@@ -335,7 +366,6 @@ static int tz_stop(struct devfreq *devfreq)
 	return 0;
 }
 
-
 static int tz_resume(struct devfreq *devfreq)
 {
 	struct devfreq_dev_profile *profile = devfreq->profile;
@@ -357,6 +387,7 @@ static int tz_suspend(struct devfreq *devfreq)
 	priv->bus.total_time = 0;
 	priv->bus.gpu_time = 0;
 	priv->bus.ram_time = 0;
+
 	return 0;
 }
 
@@ -409,13 +440,15 @@ static struct kobj_attribute target_attribute =
 static struct kobj_attribute cap_attribute =
 	__ATTR(cap, 0664, adreno_tz_cap_show, adreno_tz_cap_store);
 
-static struct attribute *attrs[] = {
+static struct attribute *attrs[] =
+{
 	&target_attribute.attr,
 	&cap_attribute.attr,
 	NULL,
 };
 
-static struct attribute_group attr_group = {
+static struct attribute_group attr_group =
+{
 	.attrs = attrs,
 	.name = DEVFREQ_ADRENO_TZ,
 };
@@ -426,42 +459,61 @@ static int tz_handler(struct devfreq *devfreq, unsigned int event, void *data)
 	BUG_ON(devfreq == NULL);
 
 	switch (event) {
-	case DEVFREQ_GOV_START:
-		result = tz_start(devfreq);
-		result = devfreq_policy_add_files(devfreq, attr_group);
-		break;
-
-	case DEVFREQ_GOV_STOP:
-		devfreq_policy_remove_files(devfreq, attr_group);
-		result = tz_stop(devfreq);
-		break;
-
-	case DEVFREQ_GOV_SUSPEND:
-		result = tz_suspend(devfreq);
-		break;
-
-	case DEVFREQ_GOV_RESUME:
-		result = tz_resume(devfreq);
-		break;
-
-	case DEVFREQ_GOV_INTERVAL:
-		/* ignored, this governor doesn't use polling */
-	default:
-		result = 0;
-		break;
+		case DEVFREQ_GOV_START:
+			result = tz_start(devfreq);
+			result = devfreq_policy_add_files(devfreq, attr_group);
+			break;
+		case DEVFREQ_GOV_STOP:
+			devfreq_policy_remove_files(devfreq, attr_group);
+			result = tz_stop(devfreq);
+			break;
+		case DEVFREQ_GOV_SUSPEND:
+			result = tz_suspend(devfreq);
+			break;
+		case DEVFREQ_GOV_RESUME:
+			result = tz_resume(devfreq);
+			break;
+		case DEVFREQ_GOV_INTERVAL:
+			/* ignored, this governor doesn't use polling */
+		default:
+			result = 0;
+			break;
 	}
 
 	return result;
 }
 
-static struct devfreq_governor msm_adreno_tz = {
+static struct devfreq_governor msm_adreno_tz =
+{
 	.name = "msm-adreno-tz",
 	.get_target_freq = tz_get_target_freq,
 	.event_handler = tz_handler,
 };
 
+static int state_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
+{
+	switch (event) {
+		case STATE_NOTIFIER_ACTIVE:
+			power_suspended = false;
+			break;
+		case STATE_NOTIFIER_SUSPEND:
+			power_suspended = true;
+			break;
+		default:
+			break;
+	}
+
+	return NOTIFY_OK;
+}
+
 static int __init msm_adreno_tz_init(void)
 {
+	adreno_tz_state_notif.notifier_call = state_notifier_callback;
+	if (state_register_client(&adreno_tz_state_notif))
+		pr_err("%s: Failed to register State notifier callback\n",
+			__func__);
+
 	return devfreq_add_governor(&msm_adreno_tz);
 }
 subsys_initcall(msm_adreno_tz_init);
@@ -469,6 +521,10 @@ subsys_initcall(msm_adreno_tz_init);
 static void __exit msm_adreno_tz_exit(void)
 {
 	int ret;
+
+	state_unregister_client(&adreno_tz_state_notif);
+	adreno_tz_state_notif.notifier_call = NULL;
+
 	ret = devfreq_remove_governor(&msm_adreno_tz);
 	if (ret)
 		pr_err(TAG "failed to remove governor %d\n", ret);
@@ -479,3 +535,4 @@ static void __exit msm_adreno_tz_exit(void)
 module_exit(msm_adreno_tz_exit);
 
 MODULE_LICENSE("GPLv2");
+
