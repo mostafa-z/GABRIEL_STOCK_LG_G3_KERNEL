@@ -9,6 +9,7 @@ obj-$(CONFIG_ARCH_MSM_KRAIT)		+= krait-l2pm.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_BW_HWMON)	+= governor_bw_hwmon.o
 obj-$(CONFIG_DEVFREQ_GOV_CONSERVATIVE)	+= governor_conservative.o
 obj-$(CONFIG_SIMPLE_GPU_ALGORITHM)	+= simple_gpu_algorithm.o
+obj-$(CONFIG_DEVFREQ_ADRENO_IDLER)		+= adreno_idler.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_CACHE_HWMON)	+= governor_cache_hwmon.o
 
 # DEVFREQ Drivers

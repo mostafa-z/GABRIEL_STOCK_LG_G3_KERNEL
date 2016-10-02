@@ -116,6 +116,11 @@ extern int simple_gpu_algorithm(int level,
 				struct devfreq_msm_adreno_tz_data *priv);
 #endif
 
+#ifdef CONFIG_DEVFREQ_ADRENO_IDLER
+extern int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
+	 	 unsigned long *freq);
+#endif
+
 static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 				u32 *flag)
 {
@@ -157,6 +162,13 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
 		return 0;
 	}
+
+#ifdef CONFIG_DEVFREQ_ADRENO_IDLER
+	if (adreno_idler(stats, devfreq, freq)) {
+		/* adreno_idler has asked to bail out now */
+		return 0;
+	}
+#endif
 
 	priv->bin.total_time += stats.total_time;
 	priv->bin.busy_time += stats.busy_time;

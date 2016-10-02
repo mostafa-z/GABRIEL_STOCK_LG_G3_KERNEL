@@ -105,6 +105,15 @@ config SIMPLE_GPU_ALGORITHM
 	help
 	  Simple user configurable GPU controlling algorithm
 
+config DEVFREQ_ADRENO_IDLER
+	tristate "MSM Adreno idler"
+	depends on DEVFREQ_GOV_MSM_ADRENO_TZ
+	help
+	  Uses a different calculation method on top of Adreno TZ
+	  just for calculating frequency for idle to reduce the
+	  wasted power coming from stock Adreno TZ while
+	  maintaining high-performance.
+
 config DEVFREQ_GOV_MSM_CACHE_HWMON
 	tristate "HW monitor based governor for cache frequency"
 	help
