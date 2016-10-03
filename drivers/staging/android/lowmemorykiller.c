@@ -46,6 +46,7 @@
 #include <linux/cpuset.h>
 #include <linux/show_mem_notifier.h>
 #include <linux/vmpressure.h>
+#include <linux/powersuspend.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/almk.h>
@@ -57,6 +58,7 @@
 #endif
 
 static uint32_t lowmem_debug_level = 1;
+static uint32_t lowmem_auto_oom = 1;
 static int lowmem_adj[6] = {
 	0,
 	1,
@@ -67,12 +69,28 @@ static int lowmem_adj[6] = {
 };
 static int lowmem_adj_size = 6;
 static int lowmem_minfree[6] = {
-	 4 * 1024,	/* Foreground App: 	16 MB	*/
-	 8 * 1024,	/* Visible App: 	32 MB	*/
-	16 * 1024,	/* Secondary Server: 	65 MB	*/
+	 3 *  512,	/* Foreground App: 	6 MB	*/
+	 2 * 1024,	/* Visible App: 	8 MB	*/
+	 4 * 1024,	/* Secondary Server: 	16 MB	*/
 	28 * 1024,	/* Hidden App: 		114 MB	*/
-	45 * 1024,	/* Content Provider: 	184 MB	*/
-	50 * 1024,	/* Empty App: 		204 MB	*/
+	31 * 1024,	/* Content Provider: 	127 MB	*/
+	34 * 1024,	/* Empty App: 		139 MB	*/
+};
+static int lowmem_minfree_screen_off[6] = {
+	3 * 512,	/* 6MB */
+	2 * 1024,	/* 8MB */
+	4 * 1024,	/* 16MB */
+	28 * 1024,	/* 114MB */
+	31 * 1024,	/* 127 MB */
+	34 * 1024,	/* 139 MB */
+};
+static int lowmem_minfree_screen_on[6] = {
+	3 * 512,	/* 6MB */
+	2 * 1024,	/* 8MB */
+	4 * 1024,	/* 16MB */
+	28 * 1024,	/* 114MB */
+	31 * 1024,	/* 127 MB */
+	34 * 1024, /* 139 MB */
 };
 static int lowmem_minfree_size = 6;
 static int lmk_fast_run = 1;
@@ -567,9 +585,29 @@ static struct shrinker lowmem_shrinker = {
 	.seeks = DEFAULT_SEEKS * 16
 };
 
+static void low_mem_early_suspend(struct power_suspend *handler)
+{
+	if (lowmem_auto_oom) {
+		memcpy(lowmem_minfree_screen_on, lowmem_minfree, sizeof(lowmem_minfree));
+		memcpy(lowmem_minfree, lowmem_minfree_screen_off, sizeof(lowmem_minfree_screen_off));
+	}
+}
+
+static void low_mem_late_resume(struct power_suspend *handler)
+{
+	if (lowmem_auto_oom)
+		memcpy(lowmem_minfree, lowmem_minfree_screen_on, sizeof(lowmem_minfree_screen_on));
+}
+
+static struct power_suspend low_mem_suspend = {
+	.suspend = low_mem_early_suspend,
+	.resume = low_mem_late_resume,
+};
+
 static int __init lowmem_init(void)
 {
 	register_shrinker(&lowmem_shrinker);
+	register_power_suspend(&low_mem_suspend);
 	vmpressure_notifier_register(&lmk_vmpr_nb);
 
 	return 0;
@@ -662,7 +700,7 @@ module_param_named(cost, lowmem_shrinker.seeks, int, S_IRUGO | S_IWUSR);
 __module_param_call(MODULE_PARAM_PREFIX, adj,
 		    &lowmem_adj_array_ops,
 		    .arr = &__param_arr_adj,
-		    S_IRUGO | S_IWUSR, -1);
+		    S_IRUGO | S_IWUSR, 0664);
 __MODULE_PARM_TYPE(adj, "array of int");
 #else
 module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
@@ -670,11 +708,14 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 #endif
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
+module_param_array_named(minfree_screen_off, lowmem_minfree_screen_off, uint, &lowmem_minfree_size,
+			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
 module_param_named(vm_pressure_adaptive_start, vm_pressure_adaptive_start, int,
 		   S_IRUGO | S_IWUSR);
 module_param_named(lmk_vm_pressure, pressure, ulong, 0444);
+module_param_named(auto_oom, lowmem_auto_oom, uint, S_IRUGO | S_IWUSR);
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);
