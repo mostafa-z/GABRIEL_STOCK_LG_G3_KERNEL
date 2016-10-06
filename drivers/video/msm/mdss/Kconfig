@@ -63,3 +63,9 @@ config T1_TOVIS_NT51021_WUXGA_VIDEO_PANEL
 config LGE_READER_MODE
 	bool "LGE reader mode"
 	default n
+
+config LCD_NOTIFY
+	depends on FB_MSM_MDSS
+	bool "Enable LCD Notifier Helper"
+	default y
+
