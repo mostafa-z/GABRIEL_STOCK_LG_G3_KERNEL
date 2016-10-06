@@ -38,6 +38,9 @@ do { 				\
 		pr_info(msg);	\
 } while (0)
 
+static unsigned int sleep_state = 0;
+module_param_named(sleep_state, sleep_state, uint, 0644);
+
 /* Registers */
 #define LM3697_REG_OUTPUT_CFG		0x10
 
@@ -234,10 +237,12 @@ void lm3697_lcd_backlight_set_level(int level)
 		if (backlight_status == BL_ON)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
 			dprintk("[LM3697] backlight is off ...\n");
+			sleep_state = 1;
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
 			dprintk("[LM3697] backlight is on ...\n");
+			sleep_state = 0;
 	}
 
 	if (ret)
