@@ -1144,6 +1144,9 @@ if TOUCHSCREEN_SYNAPTICS_G3
 
 source "drivers/input/touchscreen/g3/Kconfig"
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
 endif
 
 config TOUCHSCREEN_SYNAPTICS_G2
