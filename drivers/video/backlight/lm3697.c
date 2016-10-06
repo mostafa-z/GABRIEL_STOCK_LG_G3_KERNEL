@@ -26,6 +26,10 @@
 
 #include <mach/board_lge.h>
 
+#ifdef CONFIG_FB_MSM_MDSS
+#include <linux/lcd_notify.h>
+#endif
+
 /*
  * debug = 1 will print all
  */
@@ -238,11 +242,19 @@ void lm3697_lcd_backlight_set_level(int level)
 			ret = lm3697_bl_enable(lm3697_bl, 0);
 			dprintk("[LM3697] backlight is off ...\n");
 			sleep_state = 1;
+#ifdef CONFIG_FB_MSM_MDSS
+			lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
+			lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
+#endif
 	} else{
 		if (backlight_status == BL_OFF)
 			ret = lm3697_bl_enable(lm3697_bl, 1);
 			dprintk("[LM3697] backlight is on ...\n");
 			sleep_state = 0;
+#ifdef CONFIG_FB_MSM_MDSS
+			lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
+			lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
+#endif
 	}
 
 	if (ret)

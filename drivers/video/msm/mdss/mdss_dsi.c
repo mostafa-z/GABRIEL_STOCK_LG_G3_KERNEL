@@ -22,7 +22,6 @@
 #include <linux/err.h>
 #include <mach/board_lge.h>
 #include <linux/regulator/consumer.h>
-#include <linux/lcd_notify.h>
 #include <linux/display_state.h>
 
 #include "mdss.h"
@@ -1404,7 +1403,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
-		lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
 		rc = mdss_dsi_on(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
@@ -1416,10 +1414,8 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
 			display_on = true;
-		lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
 		break;
 	case MDSS_EVENT_BLANK:
-		lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata);
 		break;
@@ -1429,7 +1425,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_blank(pdata);
 			display_on = false;
 		rc = mdss_dsi_off(pdata);
-		lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
 #if defined(CONFIG_LGE_MIPI_DZNY_JDI_INCELL_FHD_VIDEO_PANEL)
 		if (touch_driver_registered)
 			touch_notifier_call_chain(LCD_EVENT_TOUCH_LPWG_ON, NULL);
