@@ -458,6 +458,13 @@ config READAHEAD_MMAP_PAGE_CNT
 			2 ==> 8KB
 			1 ==> 4KB
 
+config ZPOOL
+	tristate "Common API for compressed memory storage"
+	default n
+	help
+	  Compressed memory storage API.  This allows using either zbud or
+	  zsmalloc.
+
 config ZSMALLOC
 	bool "Memory allocator for compressed pages"
 	depends on MMU
