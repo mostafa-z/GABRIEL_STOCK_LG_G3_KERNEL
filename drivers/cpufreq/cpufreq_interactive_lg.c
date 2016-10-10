@@ -1088,7 +1088,7 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 	if (ret < 0)
 		return ret;
 	timer_rate = val;
-	prev_timer_rate = val_round;
+	prev_timer_rate = val;
 	return count;
 }
 
