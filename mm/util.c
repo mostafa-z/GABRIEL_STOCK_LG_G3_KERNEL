@@ -4,6 +4,7 @@
 #include <linux/export.h>
 #include <linux/err.h>
 #include <linux/sched.h>
+#include <linux/swap.h>
 #include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 
