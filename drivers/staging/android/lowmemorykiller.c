@@ -461,7 +461,6 @@ static unsigned long memory_calc_pressure(unsigned long scanned,
 
 static int reclaim_task_thread(void *p)
 {
-	struct task_struct *tsk;
 	int selected_tasksize;
 	struct reclaim_param rp;
 	unsigned long flags;
@@ -475,45 +474,43 @@ static int reclaim_task_thread(void *p)
 		if (!selected_task)
 			goto reclaim_end;
 
-		tsk = find_lock_task_mm(selected_task);
-		if (!tsk) {
-			put_task_struct(selected_task);
-			goto reclaim_end;
-		} else if (tsk != selected_task) {
-			task_unlock(tsk);
+		task_lock(selected_task);
+
+		if (selected_task->exit_state || !selected_task->mm) {
+			task_unlock(selected_task);
 			put_task_struct(selected_task);
 			goto reclaim_end;
 		}
 
-		selected_tasksize = get_mm_rss(tsk->mm);
+		selected_tasksize = get_mm_rss(selected_task->mm);
 		if (!selected_tasksize) {
-			if (lock_task_sighand(tsk, &flags)) {
-				tsk->signal->oom_score_adj = OOM_SCORE_SERVICE_B_ADJ;
-				unlock_task_sighand(tsk, &flags);
+			if (lock_task_sighand(selected_task, &flags)) {
+				selected_task->signal->oom_score_adj = OOM_SCORE_SERVICE_B_ADJ;
+				unlock_task_sighand(selected_task, &flags);
 			}
-			task_unlock(tsk);
+			task_unlock(selected_task);
 			put_task_struct(selected_task);
 			goto reclaim_end;
 		}
 
-		decrease_task_oom_score_adj(tsk);
-		task_unlock(tsk);
+		decrease_task_oom_score_adj(selected_task);
+		task_unlock(selected_task);
 
-		rp = reclaim_task_file_anon(tsk, selected_tasksize);
+		rp = reclaim_task_file_anon(selected_task, selected_tasksize);
 
 		if (memory_pressure_level <=
 			memory_calc_pressure(selected_tasksize, rp.nr_reclaimed)) {
-			if (tsk->signal->oom_score_adj <=
+			if (selected_task->signal->oom_score_adj <=
 				OOM_SCORE_SERVICE_B_ADJ - 1) {
 				send_sig(SIGKILL, selected_task, 0);
 				set_tsk_thread_flag(selected_task, TIF_MEMDIE);
 			} else {
-				task_lock(tsk);
-				if (lock_task_sighand(tsk, &flags)) {
-					tsk->signal->oom_score_adj = OOM_SCORE_SERVICE_B_ADJ;
-					unlock_task_sighand(tsk, &flags);
+				task_lock(selected_task);
+				if (lock_task_sighand(selected_task, &flags)) {
+					selected_task->signal->oom_score_adj = OOM_SCORE_SERVICE_B_ADJ;
+					unlock_task_sighand(selected_task, &flags);
 				}
-				task_unlock(tsk);
+				task_unlock(selected_task);
 			}
 			++reclaim_fail;
 		} else {
