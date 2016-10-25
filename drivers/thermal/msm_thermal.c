@@ -25,7 +25,7 @@
 #include <linux/of.h>
 #include <mach/cpufreq.h>
 
-unsigned int poll_interval = 750;
+unsigned int poll_interval = 250;
 module_param(poll_interval, int, 0644);
 
 unsigned int temp_threshold = 70;
