@@ -2267,6 +2267,7 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 			    unsigned int relation)
 {
 	int retval = -EINVAL;
+	unsigned int old_target_freq = target_freq;
 
 #if defined(CONFIG_LGE_LOW_BATT_LIMIT)
 	int update_index = 0;
@@ -2279,8 +2280,6 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 #endif
 	pr_debug("target for CPU %u: %u kHz, relation %u \n", policy->cpu,
 		target_freq, relation );
-
-	unsigned int old_target_freq = target_freq;
 
 	if (cpufreq_disabled())
 		return -ENODEV;
