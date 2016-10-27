@@ -34,6 +34,7 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/input.h>
+#include <linux/display_state.h>
 #include <asm/cputime.h>
 #include <linux/module.h>
 
@@ -98,6 +99,9 @@ static unsigned long min_sample_time;
  */
 #define DEFAULT_TIMER_RATE (40 * USEC_PER_MSEC)
 static unsigned long timer_rate;
+
+#define SCREEN_OFF_TIMER_RATE ((unsigned long)(60 * USEC_PER_MSEC))
+static unsigned long prev_timer_rate = DEFAULT_TIMER_RATE;
 
 /*
  * Wait this long before raising speed above hispeed
@@ -235,6 +239,7 @@ static void cpufreq_intel_timer(unsigned long data)
 	unsigned int new_freq;
 	unsigned int index;
 	unsigned long flags;
+	bool display_on = is_display_on();
 	cputime64_t cur_wall_time;
 	cputime64_t cur_iowait_time;
 	cputime64_t iowait_time;
@@ -274,6 +279,13 @@ static void cpufreq_intel_timer(unsigned long data)
 	cur_iowait_time = get_cpu_iowait_time(data, &cur_wall_time);
 	iowait_time = (unsigned int)(cur_iowait_time - pcpu->prev_cpu_iowait);
 	pcpu->prev_cpu_iowait = cur_iowait_time;
+
+	if (display_on && timer_rate != prev_timer_rate)
+		timer_rate = prev_timer_rate;
+	else if (!display_on && timer_rate != SCREEN_OFF_TIMER_RATE) {
+		prev_timer_rate = timer_rate;
+		timer_rate = max(timer_rate, SCREEN_OFF_TIMER_RATE);
+	}
 
 	/*
 	 * If timer ran less than 1ms after short-term sample started, retry.
@@ -1066,6 +1078,7 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 	if (ret < 0)
 		return ret;
 	timer_rate = val;
+	prev_timer_rate = val;
 	return count;
 }
 
