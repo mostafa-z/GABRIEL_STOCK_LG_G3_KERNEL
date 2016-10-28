@@ -450,7 +450,7 @@ config USE_USER_ACCESSIBLE_TIMERS
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
-	default n
+	default y
 	help
 	  It allows to reclaim pages of the process by /proc/pid/reclaim.
 
