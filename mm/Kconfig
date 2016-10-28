@@ -486,7 +486,7 @@ config READAHEAD_MMAP_PAGE_CNT
 
 config ZPOOL
 	tristate "Common API for compressed memory storage"
-	default n
+	default y
 	help
 	  Compressed memory storage API.  This allows using either zbud or
 	  zsmalloc.
