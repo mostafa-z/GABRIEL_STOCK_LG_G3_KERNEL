@@ -465,7 +465,7 @@ config PROCESS_RECLAIM
 
 config READAHEAD_MMAP_SIZE_ENABLE
 	bool "readahead mmap size set enable"
-	default n
+	default y
 	help
 		readahead mmap size set enable
 
