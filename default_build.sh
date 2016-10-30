@@ -7,15 +7,32 @@ LANG=C
 # libncurses5-dev build-essential zip git-core lib32stdc++6 lib32z1 lib32z1-dev
 # TNX Dorimanx, Androplus, Alucard_24, Andip71
 # -----------------------------------
+# folder structure
+#------------------------------------
+#	root (contains kernel source and these directories as well)
+#		/TOOLCHAIN
+#					/tc-name/bin/arm-eabi- or etc
+#		/WORKING_DIR (available in mm_ramdisk git)
+#					/D850/zImage.dtb,... (extracted from boot.img)
+#					/D850/ramdisk
+#					/D851/
+#					/ ...
+#					/ package (meta-inf,system,install.sh,... > kernel zip)
+#					/ temp (empty)
+#					/ ramdisk/ramdisk/ (res,sbin,tmp >> contains moded files)
+#		/READY_KERNEL
+#
+# if anything goes wrong with permissions use fix-permissions.sh
+# for TOOLCHAIN's permission denied use "sudo chmod -R 775 *" in its folder
+#------------------------------------
 # define variables
 #------------------------------------
-
 TODAY=`date '+%Y%m%d'`;
 GIT_BRANCH=`git symbolic-ref --short HEAD`;
 COLOR_RED="\033[0;31m"
 COLOR_GREEN="\033[1;32m"
 COLOR_NEUTRAL="\033[0m"
-LOG=(WORKING_DIR/temp/compile.log);
+LOG=(WORKING_DIR/package/compile.log);
 TCA493=(TOOLCHAIN/architoolchain-4.9/bin/arm-architoolchain-linux-gnueabi-);
 TCA510=(TOOLCHAIN/architoolchain-5.1/bin/arm-architoolchain-linux-gnueabihf-);
 TCA520=(TOOLCHAIN/architoolchain-5.2/bin/arm-architoolchain-linux-gnueabihf-);
@@ -36,7 +53,7 @@ RK=(READY_KERNEL);
 BOOT=(arch/arm/boot);
 DTC=(scripts/dtc);
 DCONF=(arch/arm/configs);
-STOCK_DEF=(cyanogenmod_d855_16_defconfig);
+STOCK_DEF=(g3-global_com-perf_defconfig);
 NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/cyanogenmod_d855_defconfig | cut -c 23-28);
 
 export PATH=$PATH:tools/lz4demo
@@ -94,12 +111,12 @@ LOG_CHECK()
 	echo -e "Check for compile errors:"
 	echo -e $COLOR_RED
 
-	cd $WD/temp
+	cd $WD/package
 	grep error compile.log
 	grep forbidden compile.log
 	grep warning compile.log
 	grep fail compile.log
-#	grep no compile.log
+	grep no compile.log
 	echo -e $COLOR_NEUTRAL
 # back to main directory
 	cd ..
@@ -167,7 +184,7 @@ NR_CPUS;
 	echo ""
 	sleep 3
 
-	touch WORKING_DIR/temp/compile.log
+	touch WORKING_DIR/package/compile.log
 	echo -e "\n***************************************************" > $LOG
 	echo -e "\nGIT branch is at : "$GIT_BRANCH >> $LOG
 	echo "CPU : compile with "$NR_CPUS"-way multitask processing" >> $LOG
@@ -261,49 +278,49 @@ if [ -f arch/arm/boot/zImage-dtb ]
 	fi;
 
 	# copy all selected ramdisk files to temp folder
-#	\cp -r $WD/$RAMDISK/* $WD/temp
+	\cp -r $WD/$RAMDISK/* $WD/temp
 	\cp -r $WD/ramdisk/* $WD/temp
-	\cp -r $WD/anykernel/* $WD/temp
+#	\cp -r $WD/anykernel/* $WD/temp
 
 	echo "copy zImage-dtb and dt.img"
 	echo ""
-	\cp -v $BOOT/zImage-dtb $WD/temp/zImage >> $LOG
-	\cp -v $BOOT/dt.img $WD/temp/dtb >> $LOG
+	\cp -v $BOOT/zImage-dtb $WD/temp/ >> $LOG
+	\cp -v $BOOT/dt.img $WD/temp/ >> $LOG
 
-#	echo "creating boot.img"
-#	echo ""
-#	./mkboot $WD/temp $WD/boot.img >> $LOG
+	echo "creating boot.img"
+	echo ""
+	./mkboot $WD/temp $WD/boot.img >> $LOG
 
-#	echo -e "\nBumping"
-#	echo ""
-#	python open_bump.py $WD/boot.img >> $LOG
+	echo -e "\nBumping"
+	echo ""
+	python open_bump.py $WD/boot.img >> $LOG
 
-#	echo "Bumped and Ready" >> $LOG
+	echo "Bumped and Ready" >> $LOG
 
-#	echo "copy bumped image"
-#	\cp -v $WD/boot_bumped.img $WD/package/boot.img >> $LOG
+	echo "copy bumped image"
+	\cp -v $WD/boot_bumped.img $WD/package/boot.img >> $LOG
 
-#	zImage=(stat -c%s $WD/temp/zImage-dtb);
-#	boot_img=(stat -c%s $WD/boot.img);
-#	echo ""
-#	echo "zImage size (bytes):"
-#	stat -c%s $WD/temp/zImage-dtb
-#	echo -n ""
-#	echo "boot.img size (bytes):"
-#	stat -c%s $WD/boot.img
-#	echo ""
+	zImage=(stat -c%s $WD/temp/zImage-dtb);
+	boot_img=(stat -c%s $WD/boot.img);
+	echo ""
+	echo "zImage size (bytes):"
+	stat -c%s $WD/temp/zImage-dtb
+	echo -n ""
+	echo "boot.img size (bytes):"
+	stat -c%s $WD/boot.img
+	echo ""
 
 	echo "copy .config"
-	\cp -v .config $WD/temp/kernel_config_view_only >> $LOG
+	\cp -v .config $WD/package/kernel_config_view_only >> $LOG
 
 	echo "Create flashable zip"
-	cd $WD/temp
+	cd $WD/package
 	zip kernel.zip -r *
 
 	echo "copy flashable zip to output > flashable"
 	cd ..
 	cd ..
-	cp -v $WD/temp/kernel.zip $RK/$FILENAME.zip
+	cp -v $WD/package/kernel.zip $RK/$FILENAME.zip
 	md5sum $RK/$FILENAME.zip > $RK/$FILENAME.zip.md5
 		
 	#This part is for me on Workin Dir
