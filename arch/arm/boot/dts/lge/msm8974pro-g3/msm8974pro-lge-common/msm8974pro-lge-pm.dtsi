@@ -349,9 +349,11 @@
 		wlc_full_chg = <&pm8941_gpios 36 0x0>;
 	};
 
+/* disabled
 	qcom,msm-thermal {
 		qcom,vdd-apps-rstr{
 			qcom,levels = <0>;
 		};
 	};
+*/
 };
