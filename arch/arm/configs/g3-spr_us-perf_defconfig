@@ -52,6 +52,7 @@ CONFIG_LGE_BOOTLOADER_LOG=y
 CONFIG_LGE_BOOTLOADER_TIME_CHECKER=y
 CONFIG_LGE_KSWITCH=y
 CONFIG_LGE_QFPROM_INTERFACE=y
+CONFIG_LGE_KRAIT_BOOST_ENABLE=y
 # CONFIG_MSM_STACKED_MEMORY is not set
 CONFIG_CPU_HAS_L2_PMU=y
 # CONFIG_MSM_FIQ_SUPPORT is not set
@@ -819,6 +820,9 @@ CONFIG_LGE_IRRC=y
 CONFIG_LGE_VSYNC_SKIP=y
 
 # Enable FIPS
+# the first 5 options enable Linux's built-in proto-FIPS
+# functonality, and we use CONFIG_CRYPTO_FIPS to turn on
+# our full FIPS mode as well
 CONFIG_CRYPTO_TEST=y
 CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=n
 CONFIG_CRYPTO_ANSI_CPRNG=y
@@ -826,6 +830,18 @@ CONFIG_CRYPTO_FIPS=y
 CONFIG_CRYPTO_SHA512=y
 CONFIG_CRYPTO_CTR=y
 CONFIG_CRYPTODEV=y
+# the next 4 options disable the Qualcomm crypto device,
+# so it doesn't take priority over FIPS validated crypto
+CONFIG_CRYPTO_DEV_QCE=n
+CONFIG_CRYPTO_DEV_QCEDEV=n
+CONFIG_CRYPTO_DEV_QCRYPTO=n
+CONFIG_DM_REQ_CRYPT=n
+# the next two options ensure that the kernel log buffer
+# is large enough that we'll see all the FIPS startup
+# output, and provide the address where the kernel
+# zImage will be copied for its integrity check
+CONFIG_LOG_BUF_SHIFT=18
+CONFIG_CRYPTO_FIPS_INTEG_COPY_ADDRESS=0x4000000
 # Enable FIPS end
 
 # Enable Runtime LCD PM
