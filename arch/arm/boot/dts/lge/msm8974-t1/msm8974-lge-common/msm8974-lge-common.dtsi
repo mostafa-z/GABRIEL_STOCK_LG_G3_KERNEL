@@ -25,7 +25,25 @@
 /include/ "msm8974-lge-camera.dtsi"
 /include/ "msm8974-lge-sensor.dtsi"
 
+/ {
+	memory {
+		crash_fb_mem: crash_fb_mem {
+			linux,contiguous-region;
+			linux,reserve-region;
+			reg = <0x0d800000 0xc00000>;
+			label = "crash_fb_mem";
+		};
+	};
+};
+
+
 &soc {
+
+	crash_fb {
+		compatible = "crash_fb";
+		mem-addr = <0x0d800000>;
+		mem-size = <0xc00000>;
+	};
 
 	/* common: core */
 	qcom,wdt@f9017000 {
