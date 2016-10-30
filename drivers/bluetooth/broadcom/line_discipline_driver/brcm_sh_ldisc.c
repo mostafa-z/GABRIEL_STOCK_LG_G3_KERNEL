@@ -1921,7 +1921,7 @@ static int __init brcm_hci_uart_init( void )
 /*****************************************************************************
 **   Module EXIT interface
 *****************************************************************************/
-static void __exit brcm_hci_uart_exit(struct hci_uart* hu)
+static void brcm_hci_uart_exit(struct hci_uart* hu)
 {
     int err;
 
@@ -2108,7 +2108,7 @@ static int __init bcmbt_ldisc_init(void)
     return 0;
 }
 
-static void __exit bcmbt_ldisc_exit(void)
+static void bcmbt_ldisc_exit(void)
 {
     platform_driver_unregister(&bcmbt_ldisc_platform_driver);
 
