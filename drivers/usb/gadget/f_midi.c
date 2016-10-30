@@ -1019,7 +1019,7 @@ int /* __init */ f_midi_bind_config(struct usb_configuration *c,
 			      unsigned int out_ports,
 			      unsigned int buflen,
 			      unsigned int qlen,
-			      struct midi_alsa_config* config)
+			      struct midi_alsa_config *config)
 #else
 int __init f_midi_bind_config(struct usb_configuration *c,
 			      int index, char *id,

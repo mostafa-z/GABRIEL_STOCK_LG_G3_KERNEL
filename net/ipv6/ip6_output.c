@@ -252,6 +252,15 @@ int ip6_xmit(struct sock *sk, struct sk_buff *skb, struct flowi6 *fl6,
 			       dst->dev, dst_output);
 	}
 
+    if(dst != NULL && dst->dev != NULL && dst->dev->name != NULL && strlen(dst->dev->name)>5 && !strncmp(dst->dev->name,"rmnet",5) && mtu < 1280)	{
+      printk("ip6_xmit No send ICMPV6_PKT_TOOBIG dev : %s  mtu : %d \n", dst->dev->name, mtu);
+	  skb->dev = dst->dev;
+	  ipv6_local_error(sk, EMSGSIZE, fl6, mtu);
+	  IP6_INC_STATS(net, ip6_dst_idev(skb_dst(skb)), IPSTATS_MIB_FRAGFAILS);
+	  kfree_skb(skb);
+	  return -EMSGSIZE;
+    }
+
 	if (net_ratelimit())
 		printk(KERN_DEBUG "IPv6: sending pkt_too_big to self\n");
 	skb->dev = dst->dev;

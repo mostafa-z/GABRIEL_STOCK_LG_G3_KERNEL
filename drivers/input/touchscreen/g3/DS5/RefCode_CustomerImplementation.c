@@ -100,7 +100,7 @@ int write_log(char *filename, char *data)
 		set_fs(KERNEL_DS);
 		if(filename == NULL){
 			if (factory_boot)
-				fname =  "/data/logger/touch_self_test.txt";
+				fname =  "/data/touch/touch_self_test.txt";
 			else
 				fname = "/sdcard/touch_self_test.txt";
 

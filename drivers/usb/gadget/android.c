@@ -127,7 +127,7 @@ static int firstboot_check = 1;
 /* f_midi configuration */
 #define MIDI_INPUT_PORTS    1
 #define MIDI_OUTPUT_PORTS   1
-#define MIDI_BUFFER_SIZE    256
+#define MIDI_BUFFER_SIZE    1024
 #define MIDI_QUEUE_LENGTH   32
 #endif
 
@@ -899,10 +899,23 @@ static int rmnet_function_bind_config(struct android_usb_function *f,
 	char buf[MAX_XPORT_STR_LEN], *b;
 	char xport_name_buf[MAX_XPORT_STR_LEN], *tb;
 	static int rmnet_initialized, ports;
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_USB_G_LGE_ANDROID)
+    static char* qmicm = "smd,bam";
+#endif
 
 	if (!rmnet_initialized) {
 		rmnet_initialized = 1;
+
+#if defined(CONFIG_ARCH_MSM8974) || defined(CONFIG_USB_G_LGE_ANDROID)
+		if(strcmp(rmnet_transports, qmicm) != 0) {
+			strlcpy(buf, qmicm, sizeof(buf));
+		}
+		else {
+			strlcpy(buf, rmnet_transports, sizeof(buf));
+		}
+#else
 		strlcpy(buf, rmnet_transports, sizeof(buf));
+#endif
 		b = strim(buf);
 
 		strlcpy(xport_name_buf, rmnet_xport_names,

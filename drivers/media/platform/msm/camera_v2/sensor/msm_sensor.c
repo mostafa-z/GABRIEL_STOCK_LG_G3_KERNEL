@@ -39,6 +39,12 @@
 #define CDBG(fmt, args...) do { } while (0)
 #endif
 
+/* LGE_CHANGE_S, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
+// _USE_AIS_
+static struct class *camera_use_ais_class = NULL;
+int32_t useAIS = 1;
+/* LGE_CHANGE_E, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
+
 static int32_t msm_camera_get_power_settimgs_from_sensor_lib(
 	struct msm_camera_power_ctrl_t *power_info,
 	struct msm_sensor_power_setting_array *power_setting_array)
@@ -1281,6 +1287,17 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 	.i2c_write_conf_tbl = msm_camera_qup_i2c_write_conf_tbl,
 };
 
+/* LGE_CHANGE_S, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
+// _USE_AIS_
+static ssize_t show_LGCameraUseAIS(struct device *dev,struct device_attribute *attr, char *buf)
+{
+    pr_err("show_LGCameraUseAIS: useAIS [%d] \n", useAIS);
+    return sprintf(buf, "%d\n", useAIS);
+}
+
+static DEVICE_ATTR(use_ais, S_IRUGO, show_LGCameraUseAIS, NULL);
+/* LGE_CHANGE_E, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
+
 int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 {
 	int rc = 0;
@@ -1377,6 +1394,31 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 			pr_info("%s: chip_type = %d\n", __func__, chip_type & 0x01);
 	}
 #endif
+
+/* LGE_CHANGE_S, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
+// _USE_AIS_
+    {
+        struct device* camera_use_ais_dev;
+        static int only_once = 0;
+        if (!only_once) {
+            only_once = 1;
+            camera_use_ais_class = class_create(THIS_MODULE, "camera_ais");
+            if (IS_ERR(camera_use_ais_class)) {
+                pr_err("%s: error. camera_use_ais_class = %p\n", __func__, camera_use_ais_class);
+            } else {
+                camera_use_ais_dev = device_create(camera_use_ais_class, NULL, 0, NULL, "use_ais");
+                if (IS_ERR(camera_use_ais_dev)) {
+                    pr_err("%s: error. camera_use_ais_dev = %p\n", __func__, camera_use_ais_dev);
+                } else {
+                    device_create_file(camera_use_ais_dev, &dev_attr_use_ais);
+                }
+            }
+        }
+        if (!strcmp(s_ctrl->sensordata->sensor_name, "t4kb3")) {
+            useAIS = 0;
+        }
+    }
+/* LGE_CHANGE_E, 3A runtime dualization 2015-10-18 sungmin.cho@lge.com */
 
 	pr_info("%s %s probe succeeded\n", __func__,
 		s_ctrl->sensordata->sensor_name);

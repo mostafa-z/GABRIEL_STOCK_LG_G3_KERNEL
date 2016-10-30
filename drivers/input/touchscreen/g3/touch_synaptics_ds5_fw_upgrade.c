@@ -147,6 +147,7 @@ int FirmwareUpgrade (struct synaptics_ts_data *ts, const char* fw_path) {
 	my_image_bin = kzalloc(sizeof(char) * (my_image_size+1), GFP_KERNEL);
 	if (my_image_bin == NULL) {
 		TOUCH_ERR_MSG("Can not allocate  memory\n");
+		release_firmware(fw_entry);
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -164,6 +165,7 @@ int FirmwareUpgrade (struct synaptics_ts_data *ts, const char* fw_path) {
 
 	CompleteReflash(ts);
 
+	release_firmware(fw_entry);
 	return ret;
 error:
 	memset(&fw_entry, 0, sizeof(fw_entry));

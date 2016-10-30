@@ -302,6 +302,7 @@
 #define POWERLOCK_SYSFS		(0x01 << 2)
 
 #define SELF_DIAGNOSTIC_FILE_PATH "/mnt/sdcard/touch_self_test.txt"
+#define SELF_DIAGNOSTIC_FILE_PATH_MINIOS "/data/logger/touch_self_test.txt"
 #define SELF_DIAGNOSTIC_STATUS_COMPLETE	0
 #define SELF_DIAGNOSTIC_STATUS_RUNNING	1
 

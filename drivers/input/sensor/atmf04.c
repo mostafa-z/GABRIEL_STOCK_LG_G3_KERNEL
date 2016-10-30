@@ -126,8 +126,8 @@ int CalData[4][SZ_CALDATA_UNIT];
 #if defined(CONFIG_LGE_T1_CAP)
 #define CNT_INITCODE               13
 const unsigned char InitCodeAddr[CNT_INITCODE] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0C, 0x0D, 0x0E, 0x20, 0x21 };
-const unsigned char InitCodeVal[CNT_INITCODE]   = { 0x00, 0x19, 0x33, 0x0B, 0x08, 0x6F, 0x6D, 0x07, 0x00, 0x0C, 0x14, 0x81, 0x20 }; // High Band ANT
-const unsigned char InitCodeVal2[CNT_INITCODE] = { 0x00, 0x17, 0x33, 0x23, 0x08, 0x6E, 0x6D, 0x06, 0x00, 0x0C, 0x10, 0x01, 0x20 }; // Low Band  ANT
+const unsigned char InitCodeVal[CNT_INITCODE]   = { 0x00, 0x19, 0x33, 0x0B, 0x08, 0x6F, 0x6D, 0x07, 0x00, 0x0C, 0x0E, 0x81, 0x20 }; // High Band ANT
+const unsigned char InitCodeVal2[CNT_INITCODE] = { 0x00, 0x17, 0x33, 0x23, 0x08, 0x6E, 0x6D, 0x06, 0x00, 0x0C, 0x0A, 0x01, 0x20 }; // Low Band  ANT
 #else
 #define CNT_INITCODE                7
 const unsigned char InitCodeAddr[CNT_INITCODE] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
@@ -1091,6 +1091,8 @@ static ssize_t atmf04_show_check_mid(struct device *dev, struct device_attribute
     short cr_duty[2], cs_duty[2], cr_duty_val, cs_duty_val;
 	int bit_mask = 1; //bit for reading of I2C_ADDR_SYS_STAT
 
+    mdelay(250);
+
     mutex_lock(&data->update_lock);
 
     cs_per[0] = i2c_smbus_read_byte_data(client,I2C_ADDR_PER_H);
@@ -1122,13 +1124,13 @@ static ssize_t atmf04_show_check_mid(struct device *dev, struct device_attribute
 #endif
     if ((get_bit(init_touch_md_check, bit_mask) != 1) || (cs_duty_val < ATMF04_CRCS_DUTY_LOW)\
             ||(cr_duty_val <ATMF04_CRCS_DUTY_LOW) || (cs_duty_val > ATMF04_CRCS_DUTY_HIGH)\
-            || (cr_duty_val > ATMF04_CRCS_DUTY_HIGH) || (cs_per_result < ATMF04_MID_CSCR_RESULT) || (crcs_count > ATMF04_CRCS_COUNT)) {
-        PINFO("[fail] 1.cal_check : %d, cr_value : %d, cs_value : %d, status : %d Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, cs_per_result, crcs_count);
+            || (cr_duty_val > ATMF04_CRCS_DUTY_HIGH) || (crcs_count > ATMF04_CRCS_COUNT)) {
+        PINFO("[fail] 1.cal_check : %d, cr_value : %d, cs_value : %d, Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, crcs_count);
         mutex_unlock(&data->update_lock);
         return sprintf(buf,"%d",0);
     }
     else {
-        PINFO("[pass] 2.cal_check : %d, cr_value : %d, cs_value : %d, status : %d Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, cs_per_result, crcs_count);
+        PINFO("[pass] 2.cal_check : %d, cr_value : %d, cs_value : %d, Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, crcs_count);
         mutex_unlock(&data->update_lock);
         return sprintf(buf,"%d",1);
     }
@@ -1138,13 +1140,13 @@ static ssize_t atmf04_show_check_mid(struct device *dev, struct device_attribute
 	    PINFO("atmf04_show_check_mid[80]");
 	    if ((get_bit(init_touch_md_check, bit_mask) != 1) || (cs_duty_val < ATMF04_HB_CRCS_DUTY_LOW)\
             ||(cr_duty_val <ATMF04_HB_CRCS_DUTY_LOW) || (cs_duty_val > ATMF04_HB_CRCS_DUTY_HIGH)\
-            || (cr_duty_val > ATMF04_HB_CRCS_DUTY_HIGH) || (cs_per_result < ATMF04_MID_HB_CSCR_RESULT) || (crcs_count > ATMF04_HB_CRCS_COUNT)) {
-            PINFO("[fail] HB 1.cal_check : %d, cr_value : %d, cs_value : %d, status : %d Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, cs_per_result, crcs_count);
+            || (cr_duty_val > ATMF04_HB_CRCS_DUTY_HIGH) || (crcs_count > ATMF04_HB_CRCS_COUNT)) {
+            PINFO("[fail] HB 1.cal_check : %d, cr_value : %d, cs_value : %d, Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, crcs_count);
             mutex_unlock(&data->update_lock);
             return sprintf(buf,"%d",0);
         }
 	    else {
-            PINFO("[pass] HB 2.cal_check : %d, cr_value : %d, cs_value : %d, status : %d Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, cs_per_result, crcs_count);
+            PINFO("[pass] HB 2.cal_check : %d, cr_value : %d, cs_value : %d, Count : %d",get_bit(init_touch_md_check, bit_mask), cr_duty_val, cs_duty_val, crcs_count);
             mutex_unlock(&data->update_lock);
             return sprintf(buf,"%d",1);
 	    }

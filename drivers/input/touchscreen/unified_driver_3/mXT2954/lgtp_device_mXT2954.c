@@ -44,11 +44,11 @@
 * Variables
 ****************************************************************************/
 #if defined(CONFIG_MACH_MSM8974_T1LTE_GLOBAL_COM)
-static const char defaultFirmware[] = "atmel/t1lte_global_com/t1_0803v25.fw";
+static const char defaultFirmware[] = "atmel/t1lte_global_com/t1_1006v26.fw";
 #elif defined(CONFIG_MACH_MSM8974_T1WIFI_GLOBAL_COM)
-static const char defaultFirmware[] = "atmel/t1wifi_global_com/t1_0803v25.fw";
+static const char defaultFirmware[] = "atmel/t1wifi_global_com/t1_1006v26.fw";
 #elif defined(CONFIG_MACH_MSM8974_T1WIFIN_GLOBAL_COM)
-static const char defaultFirmware[] = "atmel/t1wifin_global_com/t1_0803v25.fw";
+static const char defaultFirmware[] = "atmel/t1wifin_global_com/t1_1006v26.fw";
 #endif
 
 //====================================================================
@@ -190,6 +190,11 @@ struct mxt2954_object *mxt_get_object(struct mxt2954_ts_data *ts, u8 type)
 {
 	struct mxt2954_object *object = NULL;
 	int i = 0;
+
+	if (ts->object_table == NULL) {
+		TOUCH_LOG("Invalid object_table\n");
+		return NULL;
+	}
 
 	for (i = 0; i < ts->info->object_num; i++) {
 		object = ts->object_table + i;
@@ -1217,6 +1222,8 @@ static int mXT2954_Initialize(struct i2c_client *client)
 	else
 		ts->minios = false;
 
+	ts->regulator_status = 0;
+
 	gpio_set_value(TOUCH_GPIO_RESET, 0);
 
 	/* S-unused Regulator L22 */
@@ -1315,6 +1322,7 @@ static int mXT2954_Initialize(struct i2c_client *client)
 		return TOUCH_FAIL;
 	}
 
+	ts->regulator_status = 1;
 	return TOUCH_SUCCESS;
 }
 
@@ -2092,6 +2100,16 @@ void trigger_usb_state_from_otg(int usb_type)
 		if (!global_ts->global_object)
 			return;
 
+		if (ts->regulator_status == 0) {
+			TOUCH_LOG("IC Regulator Disabled. Do nothing\n");
+			if (usb_type == 0) {
+				mxt_patchevent_unset(PATCH_EVENT_TA);
+			} else {
+				mxt_patchevent_set(PATCH_EVENT_TA);
+			}
+			return;
+		}
+
 		if (global_ts->use_mfts == true) {
 			TOUCH_LOG("MFTS : Not support USB trigger\n");
 			return;
@@ -2503,7 +2521,7 @@ static int mXT2954_InterruptHandler(struct i2c_client *client,TouchReadData *pDa
 
 	mutex_unlock(&i2c_suspend_lock);
 
-	return ret;
+	return TOUCH_SUCCESS;
 }
 
 static int mxt_read_id_info(struct mxt2954_ts_data *ts)
@@ -3142,6 +3160,10 @@ static int mxt_write_config(struct mxt2954_fw_info *fw_info)
 	}
 
 	object = mxt_get_object(ts, MXT_SPT_DYNAMICCONFIGURATIONCONTAINER_T71);
+	if(!object) {
+		   TOUCH_ERR("fail to get object\n");
+		   return TOUCH_SUCCESS;
+	}
 
 	ret = Mxt2954_I2C_Read(ts->client, object->start_address + 107, 2, buf_crc_t71, 5);
 	if (ret)
@@ -3333,6 +3355,7 @@ static int  mxt_config_initialize(struct mxt2954_fw_info *fw_info)
 	struct mxt2954_ts_data *ts = fw_info->ts;
 
 	int ret = 0;
+	int retrycnt = 0;
 
 	ret = mxt_write_config(fw_info);
 	if (ret) {
@@ -3340,12 +3363,28 @@ static int  mxt_config_initialize(struct mxt2954_fw_info *fw_info)
 		goto out;
 	}
 
+RETRY:
 	if (ts->patch.patch) {
 		ret = mxt_patch_init(ts, ts->patch.patch);
 		if (ret) {
-			TOUCH_ERR("Failed to mxt_patch_init\n");
+			if (retrycnt >= RETRY_CNT) {
+				TOUCH_ERR("Touch IC Failure : can not mxt_patch init\n");
+				global_ts = NULL;
+				TOUCH_ERR("Failed to get global_ts (NULL)\n");
+				return TOUCH_FAIL;
+			} else {
+				TOUCH_ERR("Failed to mxt_patch_init (%d)\n", ret);
+				TOUCH_ERR("Retry : Can not mxt_patch init (%d/%d)\n", retrycnt + 1, RETRY_CNT);
+
+				mXT2954_Reset(ts->client);
+
+				retrycnt++;
+
+				goto RETRY;
+			}
 		}
 	}
+
 	if (ret == 0) {
 		global_ts = ts;
 	} else {
@@ -3355,6 +3394,7 @@ static int  mxt_config_initialize(struct mxt2954_fw_info *fw_info)
 
 out:
 	return TOUCH_SUCCESS;
+
 }
 
 static void mxt_free_object_table(struct mxt2954_ts_data *ts)
@@ -3630,6 +3670,10 @@ static void mxt_regulator_enable(struct i2c_client *client)
 	int error = 0;
 	TOUCH_FUNC();
 
+	if(ts->regulator_status == 1){
+		TOUCH_ERR("duplicated mxt_regulator_enable");
+		return;
+	}
 	gpio_set_value(TOUCH_GPIO_RESET, 0);
 	/* vdd_ana enable */
 	gpio_set_value(TOUCH_LDO_AVDD, 1);
@@ -3647,6 +3691,7 @@ static void mxt_regulator_enable(struct i2c_client *client)
 		TOUCH_ERR("failed to enable regulator ( error = %d )\n", error);
 		return ;
 	}
+	ts->regulator_status = 1;
 	msleep(1);
 	gpio_set_value(TOUCH_GPIO_RESET, 1);
 	msleep(200);
@@ -3658,6 +3703,10 @@ static void mxt_regulator_disable(struct i2c_client *client)
 {
 	int error = 0;
 	TOUCH_FUNC();
+	if(ts->regulator_status == 0){
+		TOUCH_ERR("duplicated mxt_regulator_disable");
+		return;
+	}
 
 	gpio_set_value(TOUCH_GPIO_RESET, 0);
 	/* vdd_ana disable */
@@ -3676,6 +3725,7 @@ static void mxt_regulator_disable(struct i2c_client *client)
 		TOUCH_ERR("failed to disable regulator ( error = %d )\n", error);
 		return ;
 	}
+	ts->regulator_status = 0;
 	TOUCH_LOG("Power Off Touch IC\n");
 }
 
@@ -3835,15 +3885,14 @@ static int mXT2954_lpwg_control(struct i2c_client *client, TouchState newState)
 		TOUCH_LOG("Normal State - TapCount[%d]\n", ts->g_tap_cnt);
 		ts->mxt_knock_on_enable = false;
 		ts->mxt_multi_tap_enable = false;
-		/* Case : Disable Knock-On Mode setting in HiddenMenu */
-		if (!ts->lpwgSetting.mode || ts->currState == STATE_OFF)
+		if (ts->regulator_status == 0)
 			mxt_regulator_enable(client);
 		mxt_active_mode_start(ts);
 		break;
 
 	case STATE_KNOCK_ON_ONLY:
 		TOUCH_LOG("Only Knock On - TapCount[%d]\n", ts->g_tap_cnt);
-		if (ts->currState == STATE_OFF)
+		if (ts->regulator_status == 0)
 			mxt_regulator_enable(client);
 		mxt_lpwg_enable(ts, newState);
 		mxt_gesture_mode_start(ts, newState);
@@ -3852,7 +3901,7 @@ static int mXT2954_lpwg_control(struct i2c_client *client, TouchState newState)
 
 	case STATE_KNOCK_ON_CODE:
 		TOUCH_LOG("Knock On/Code - TapCount[%d]\n", ts->g_tap_cnt);
-		if (ts->currState == STATE_OFF)
+		if (ts->regulator_status == 0)
 			mxt_regulator_enable(client);
 		mxt_lpwg_enable(ts, newState);
 		mxt_gesture_mode_start(ts, newState);
@@ -3995,7 +4044,7 @@ static int mXT2954_UpdateFirmware(struct i2c_client *client, char *pFilename)
 
 	error = mxt_flash_fw_on_probe(&ts->fw_info);
 	if (error) {
-		TOUCH_ERR("Failed to mxt_table_initialize\n");
+		TOUCH_ERR("Failed to mxt_flash_fw_on_probe\n");
 		return TOUCH_FAIL;
 	}
 

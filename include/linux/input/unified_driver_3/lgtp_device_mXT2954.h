@@ -204,7 +204,7 @@
 #define MXT_T42_MSG_TCHSUP	(1 << 0)
 
 /* Delay times */
-#define MXT_BACKUP_TIME		20		/* msec */
+#define MXT_BACKUP_TIME		50		/* msec */
 #define MXT_RESET_TIME		200		/* msec */
 #define MXT_RESET_TIMEOUT	3000	/* msec */
 #define MXT_CRC_TIMEOUT		1000	/* msec */
@@ -250,7 +250,7 @@
 #define MXT_PATCH_MAX_CON		255
 #define MXT_PATCH_MAX_EVENT		255
 #define MXT_PATCH_MAX_MSG_SIZE	10
-#define MXT_PATCH_T71_DATA_MAX	112
+#define MXT_PATCH_T71_DATA_MAX	200
 #define MXT_PATCH_T71_PTN_OPT		1
 #define MXT_PATCH_T71_PTN_CAL		2
 #define MXT_PATCH_LOCK_CHECK		1
@@ -321,7 +321,7 @@
 #define SELF_CAP_OFF_NOISE_SUPPRESSION	17
 #define SELF_CAP_ON_NOISE_RECOVER	18
 
-#define RETRY_CNT	2
+#define RETRY_CNT	3
 
 #define SELF_DIAGNOSTIC_FILE_PATH "/mnt/sdcard/touch_self_test.txt"
 #define DELTA_FILE_PATH "/mnt/sdcard/touch_delta.txt"
@@ -866,6 +866,7 @@ struct mxt2954_ts_data {
 
 	bool mxt_knock_on_enable;
 	bool is_knockCodeDelay;
+	u8 regulator_status;
 
 	u8 lpwg_mode;
 	TouchState currState;

@@ -367,7 +367,7 @@ static void mxt_patch_check_supp(struct mxt2954_ts_data *data, struct touch_supp
 	mxt_patch_dump_source(data, true);
 }
 
-static void mxt_patch_load_t71data(struct mxt2954_ts_data *data)
+static int mxt_patch_load_t71data(struct mxt2954_ts_data *data)
 {
 	struct mxt2954_object *obj = NULL;
 	u8 buf[MXT_PATCH_T71_DATA_MAX] = {0};
@@ -377,6 +377,8 @@ static void mxt_patch_load_t71data(struct mxt2954_ts_data *data)
 	obj = mxt_get_object(data, MXT_SPT_DYNAMICCONFIGURATIONCONTAINER_T71);
 	if (obj) {
 		error = mxt_read_mem(data, obj->start_address, MXT_PATCH_T71_DATA_MAX, buf);
+		if (error)
+			return 1;
 
 		if (!error) {
 			tpos->option = buf[MXT_PATCH_T71_PTN_OPT];
@@ -439,8 +441,10 @@ static void mxt_patch_load_t71data(struct mxt2954_ts_data *data)
 
 			__mxt_patch_debug(data, "SUPP GAP %d*100ms CNT %d\n",
 				tsupp_data.time_gap, tsupp_data.repeat_max);
+
 		}
 	}
+	return 0;
 }
 
 const char *mxt_patch_src_item_name(u8 src_id)
@@ -1493,6 +1497,7 @@ int mxt_patch_init(struct mxt2954_ts_data *data, u8 *ppatch)
 	u16 trigger_addr[64] = {0};
 	u16 event_addr[64] = {0};
 	u32 patch_size = 0;
+	int ret = 0;
 
 	TOUCH_PATCH_INFO_MSG("%s\n", __func__);
 
@@ -1554,8 +1559,11 @@ int mxt_patch_init(struct mxt2954_ts_data *data, u8 *ppatch)
 		}
 		memcpy(patch_info->event_addr, event_addr, patch_info->event_cnt*sizeof(u16));
 	}
-
-	mxt_patch_load_t71data(data);
+	/* Need for stabilization time after configuration writing in firmware upgrade */
+	msleep(200);
+	ret = mxt_patch_load_t71data(data);
+	if (ret)
+		return 1;
 	mxt_patch_init_userdata();
 
 	return 0;

@@ -87,11 +87,6 @@
 
 #define FM_STEP_NONE               0xff
 
-/* FM/RDS flag bits */
-#define FM_RDS_FLAG_CLEAN_BIT       0x01 /* clean FM_RDS_FLAG region */
-#define FM_RDS_FLAGSCH_FRZ_BIT          0x02 /* interrupt freeze */
-#define FM_RDS_FLAG_SCH_BIT         0x04 /* Pending search_tune */
-
 /* bits in I2C_FM_REG_FM_RDS_FLAG 0x12 */
 #define I2C_MASK_SRH_TUNE_CMPL_BIT     (0x0001 << 0)    /* FM/RDS register search/tune cmpl bit */
 #define I2C_MASK_SRH_TUNE_FAIL_BIT     (0x0001 << 1)    /* FM/RDS register search/tune fail bit */
@@ -194,6 +189,11 @@ struct fm_rx {
     unsigned short fm_rds_flag;     /* FM/RDS interrupt flag */
     unsigned char fm_func_mask;
     struct fm_rds rds;
+
+//BRCM_LOCAL [CSP#1011785] : FM radio Kernel crash
+    u8 abort_flag;
+    u8 seek_pending;
+//BRCM_LOCAL [CSP#1011785]
 
     u8 af_mode;         /* Alternate frequency on/off */
     u8 no_of_chans;     /* Number stations found */

@@ -2747,15 +2747,15 @@ static void cgroup_enable_task_cg_lists(void)
 	 */
 	read_lock(&tasklist_lock);
 	do_each_thread(g, p) {
-		task_lock(p);
 		/*
 		 * We should check if the process is exiting, otherwise
 		 * it will race with cgroup_exit() in that the list
 		 * entry won't be deleted though the process has exited.
 		 */
+		spin_lock_irq(&p->sighand->siglock);
 		if (!(p->flags & PF_EXITING) && list_empty(&p->cg_list))
 			list_add(&p->cg_list, &p->cgroups->tasks);
-		task_unlock(p);
+		spin_unlock_irq(&p->sighand->siglock);
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
 	write_unlock(&css_set_lock);
