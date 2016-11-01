@@ -447,7 +447,6 @@ config USE_USER_ACCESSIBLE_TIMERS
 	  architecture-specific code that will need to be enabled
 	  separately.
 
-<<<<<<< HEAD
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
