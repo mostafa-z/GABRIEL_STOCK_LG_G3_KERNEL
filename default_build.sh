@@ -47,6 +47,7 @@ TCDR610=(TOOLCHAIN/TC-6.1-Dorimanx/bin/arm-eabi-);
 TCLN494=(TOOLCHAIN/linaro-4.9.4-dorimanx/bin/arm-LG-linux-gnueabi-);
 TCLN490=(TOOLCHAIN/linaro-4.9/bin/arm-eabi-);
 TCLN530=(TOOLCHAIN/linaro-5.3/bin/arm-eabi-);
+TCLN610=(TOOLCHAIN/linaro-6.1/bin/arm-eabi-);
 KD=$(readlink -f .);
 WD=(WORKING_DIR);
 RK=(READY_KERNEL);
@@ -339,7 +340,7 @@ fi;
 }
 
 echo "Select Toolchain ... ";
-select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X DORI-5.4.X DORI-6.1.X LINARO-4.9.x LINARO-5.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
+select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X DORI-5.4.X DORI-6.1.X LINARO-4.9.x LINARO-5.3.x LINARO-6.1.x LAST_ONE CLEANUP CONTINUE_BUILD; do
 	case "$CHOICE" in
 		"ARCHI-4.9.3")
 			TC=$TCA493;
@@ -382,6 +383,9 @@ select CHOICE in ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-
 			break;;
 		"LINARO-5.3.x")
 			TC=$TCLN530;
+			break;;
+		"LINARO-6.1.x")
+			TC=$TCLN610;
 			break;;
 		"CONTINUE_BUILD")
 			CONTINUE_BUILD;
