@@ -798,13 +798,16 @@ again:			remove_next = 1 + (end > next->vm_end);
 		 * up the code too much to do both in one go.
 		 */
 		next = vma->vm_next;
-		if (remove_next == 2)
+		if (remove_next == 2) {
 			uksm_remove_vma(next);
 			goto again;
-		else if (next)
+		}
+		else if (next) {
 			vma_gap_update(next);
-		else
+		}
+		else {
 			mm->highest_vm_end = end;
+		}
 	} else {
 		if (next && !insert)
 			uksm_vma_add_new(next);
