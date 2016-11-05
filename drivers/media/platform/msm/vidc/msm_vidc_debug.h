@@ -37,6 +37,7 @@ enum vidc_msg_prio {
 
 enum vidc_msg_out {
 	VIDC_OUT_PRINTK = 0,
+	VIDC_OUT_FTRACE,
 };
 
 enum msm_vidc_debugfs_event {
@@ -60,6 +61,9 @@ extern u32 msm_vidc_firmware_unload_delay;
 		if (msm_vidc_debug & __level) { \
 			if (msm_vidc_debug_out == VIDC_OUT_PRINTK) { \
 				printk(KERN_DEBUG VIDC_DBG_TAG \
+						__fmt, __level, ## arg); \
+			} else if (msm_vidc_debug_out == VIDC_OUT_FTRACE) { \
+				trace_printk(KERN_DEBUG VIDC_DBG_TAG \
 						__fmt, __level, ## arg); \
 			} \
 		} \
