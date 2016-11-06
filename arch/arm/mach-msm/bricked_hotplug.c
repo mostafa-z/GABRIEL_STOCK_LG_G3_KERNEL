@@ -84,6 +84,10 @@ static struct cpu_hotplug {
 	.hotplug_suspend = 0,
 };
 
+/* default: {12, 0, 25, 7, 30, 10, 0, 18}; */
+/* showp1984: {12, 0, 20, 7, 25, 10, 0, 18}; */
+/* sonservative: {20, 0, 40, 15, 55, 30, 0, 45}; */
+
 static unsigned int NwNs_Threshold[8] = {12, 0, 25, 7, 30, 10, 0, 18};
 static unsigned int TwTs_Threshold[8] = {140, 0, 140, 190, 140, 190, 0, 190};
 
