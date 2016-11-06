@@ -49,76 +49,69 @@ struct qpnp_vib {
 	int vtg_max;
 	int vtg_level;
 	int timeout;
-	struct mutex lock;
-#ifdef CONFIG_VIBRATOR_PM8941_HAPTIC
-	int vtg_haptic_level;
-#endif
+	spinlock_t lock;
 };
 
-struct qpnp_vib *vib_dev;
-EXPORT_SYMBOL(vib_dev);
+static struct qpnp_vib *vib_dev;
+
+static ssize_t qpnp_vib_level_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct timed_output_dev *tdev = dev_get_drvdata(dev);
+	struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib, timed_dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_level);
+}
+
+static ssize_t qpnp_vib_level_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct timed_output_dev *tdev = dev_get_drvdata(dev);
+	struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib, timed_dev);
+	int val;
+	int rc;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc) {
+		pr_err("%s: error getting level\n", __func__);
+		return -EINVAL;
+	}
+
+	if (val < vib->vtg_min) {
+		pr_err("%s: level %d not in range (%d - %d), using min.",
+			__func__, val, vib->vtg_min, vib->vtg_max);
+		val = vib->vtg_min;
+	} else if (val > vib->vtg_max) {
+		pr_err("%s: level %d not in range (%d - %d), using max.",
+			__func__, val, vib->vtg_min, vib->vtg_max);
+		val = vib->vtg_max;
+	}
+
+	vib->vtg_level = val;
+
+	return strnlen(buf, count);
+}
 
 static ssize_t qpnp_vib_min_show(struct device *dev,
-                                        struct device_attribute *attr,
-                                        char *buf)
+					struct device_attribute *attr,
+					char *buf)
 {
-        struct timed_output_dev *tdev = dev_get_drvdata(dev);
-        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
-                                         timed_dev);
+	struct timed_output_dev *tdev = dev_get_drvdata(dev);
+	struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib, timed_dev);
 
-        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_min);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_min);
 }
 
 static ssize_t qpnp_vib_max_show(struct device *dev,
-                                        struct device_attribute *attr,
-                                        char *buf)
+					struct device_attribute *attr,
+					char *buf)
 {
-        struct timed_output_dev *tdev = dev_get_drvdata(dev);
-        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
-                                         timed_dev);
+	struct timed_output_dev *tdev = dev_get_drvdata(dev);
+	struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib, timed_dev);
 
-        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_max);
-}
-
-static ssize_t qpnp_vib_level_show(struct device *dev,
-                                        struct device_attribute *attr,
-                                        char *buf)
-{
-        struct timed_output_dev *tdev = dev_get_drvdata(dev);
-        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
-                                         timed_dev);
-
-        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_level);
-}
-
-
-static ssize_t qpnp_vib_level_store(struct device *dev,
-                                        struct device_attribute *attr,
-                                        const char *buf, size_t count)
-{
-        struct timed_output_dev *tdev = dev_get_drvdata(dev);
-        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
-                                         timed_dev);
-        int val;
-        int rc;
-
-        rc = kstrtoint(buf, 10, &val);
-        if (rc) {
-                pr_err("%s: error getting level\n", __func__);
-                return -EINVAL;
-        }
-
-        if (val < vib->vtg_min) {
-                pr_err("%s: level %d not in range (%d - %d), using min.", __func__, val, vib->vtg_min, vib->vtg_max);
-                val = vib->vtg_min;
-        } else if (val > vib->vtg_max) {
-                pr_err("%s: level %d not in range (%d - %d), using max.", __func__, val, vib->vtg_min, vib->vtg_max);
-                val = vib->vtg_max;
-        }
-
-        vib->vtg_level = val;
-
-        return strnlen(buf, count);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_max);
 }
 
 static DEVICE_ATTR(vtg_level, S_IRUGO | S_IWUSR, qpnp_vib_level_show, qpnp_vib_level_store);
@@ -198,7 +191,7 @@ int qpnp_vibrator_config(struct qpnp_vib_config *vib_cfg)
 }
 EXPORT_SYMBOL(qpnp_vibrator_config);
 
-int qpnp_vib_set(struct qpnp_vib *vib, int on)
+static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 {
 	int rc;
 	u8 val;
@@ -228,74 +221,20 @@ int qpnp_vib_set(struct qpnp_vib *vib, int on)
 
 	return rc;
 }
-EXPORT_SYMBOL(qpnp_vib_set);
-
-#ifdef CONFIG_VIBRATOR_PM8941_HAPTIC
-static int qpnp_vib_set_level(struct timed_output_dev *dev, int data)
-{
-    struct qpnp_vib *vib = container_of(dev, struct qpnp_vib, timed_dev);
-
-    if (data <= QPNP_VIB_MAX_LEVEL)
-        vib->vtg_haptic_level = data;
-    else
-	vib->vtg_haptic_level = QPNP_VIB_MAX_LEVEL;
-
-    return 0;
-}
-
-static int qpnp_vib_get_level(struct timed_output_dev *dev)
-{
-    struct qpnp_vib *vib = container_of(dev, struct qpnp_vib, timed_dev);
-    return vib->vtg_level;
-}
-#endif
-
-#ifdef CONFIG_TSPDRV_PMIC_VIBRATOR
-/* Begin Immersion changes */
-int qpnp_vib_set_with_vtglevel(struct qpnp_vib *vib, int vtglevel, int on)
-{
-	int rc;
-	u8 val;
-
-	if(vtglevel < QPNP_VIB_MIN_LEVEL) vtglevel = QPNP_VIB_MIN_LEVEL;
-	if(vtglevel > QPNP_VIB_MAX_LEVEL) vtglevel = QPNP_VIB_MAX_LEVEL;
-
-	if (on) {
-		val = vib->reg_vtg_ctl;
-		val &= ~QPNP_VIB_VTG_SET_MASK;
-		val |= (vtglevel & QPNP_VIB_VTG_SET_MASK);
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_VTG_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_vtg_ctl = val;
-		val = vib->reg_en_ctl;
-		val |= QPNP_VIB_EN;
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_EN_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_en_ctl = val;
-	} else {
-		val = vib->reg_en_ctl;
-		val &= ~QPNP_VIB_EN;
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_EN_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_en_ctl = val;
-	}
-
-	return rc;
-}
-EXPORT_SYMBOL(qpnp_vib_set_with_vtglevel);
-/* End Immersion changes */
-#endif
 
 static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 {
 	struct qpnp_vib *vib = container_of(dev, struct qpnp_vib,
 					 timed_dev);
+	unsigned long flags;
 
-	mutex_lock(&vib->lock);
-	hrtimer_cancel(&vib->vib_timer);
+retry:
+	spin_lock_irqsave(&vib->lock, flags);
+	if (hrtimer_try_to_cancel(&vib->vib_timer) < 0) {
+		spin_unlock_irqrestore(&vib->lock, flags);
+		cpu_relax();
+		goto retry;
+	}
 
 	if (value == 0)
 		vib->state = 0;
@@ -303,16 +242,13 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 		value = (value > vib->timeout ?
 				 vib->timeout : value);
 		vib->state = 1;
-
-#ifdef CONFIG_VIBRATOR_PM8941_HAPTIC
-		vib->vtg_level = vib->vtg_haptic_level;
-#endif
 		hrtimer_start(&vib->vib_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
 	}
-	mutex_unlock(&vib->lock);
-	schedule_work(&vib->work);
+	qpnp_vib_set(vib, vib->state);
+
+	spin_unlock_irqrestore(&vib->lock, flags);
 }
 
 static void qpnp_vib_update(struct work_struct *work)
@@ -338,9 +274,14 @@ static enum hrtimer_restart qpnp_vib_timer_func(struct hrtimer *timer)
 {
 	struct qpnp_vib *vib = container_of(timer, struct qpnp_vib,
 							 vib_timer);
+	unsigned long flags;
+
+	spin_lock_irqsave(&vib->lock, flags);
 
 	vib->state = 0;
-	schedule_work(&vib->work);
+	qpnp_vib_set(vib, vib->state);
+
+	spin_unlock_irqrestore(&vib->lock, flags);
 
 	return HRTIMER_NORESTART;
 }
@@ -419,10 +360,6 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	vib->vtg_min /= 100;
 	vib->vtg_max /= 100;
 
-#ifdef CONFIG_VIBRATOR_PM8941_HAPTIC
-	vib->vtg_haptic_level = vib->vtg_level;
-#endif
-
 	vib_resource = spmi_get_resource(spmi, 0, IORESOURCE_MEM, 0);
 	if (!vib_resource) {
 		dev_err(&spmi->dev, "Unable to get vibrator base address\n");
@@ -441,7 +378,7 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 		return rc;
 	vib->reg_en_ctl = val;
 
-	mutex_init(&vib->lock);
+	spin_lock_init(&vib->lock);
 	INIT_WORK(&vib->work, qpnp_vib_update);
 
 	hrtimer_init(&vib->vib_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -450,10 +387,7 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	vib->timed_dev.name = "vibrator";
 	vib->timed_dev.get_time = qpnp_vib_get_time;
 	vib->timed_dev.enable = qpnp_vib_enable;
-#ifdef CONFIG_VIBRATOR_PM8941_HAPTIC
-	vib->timed_dev.set_vtLevel = qpnp_vib_set_level;
-	vib->timed_dev.get_vtLevel = qpnp_vib_get_level;
-#endif
+
 	dev_set_drvdata(&spmi->dev, vib);
 
 	rc = timed_output_dev_register(&vib->timed_dev);
@@ -476,7 +410,6 @@ static int  __devexit qpnp_vibrator_remove(struct spmi_device *spmi)
 	cancel_work_sync(&vib->work);
 	hrtimer_cancel(&vib->vib_timer);
 	timed_output_dev_unregister(&vib->timed_dev);
-	mutex_destroy(&vib->lock);
 
 	return 0;
 }
@@ -511,3 +444,4 @@ module_exit(qpnp_vibrator_exit);
 
 MODULE_DESCRIPTION("qpnp vibrator driver");
 MODULE_LICENSE("GPL v2");
+
