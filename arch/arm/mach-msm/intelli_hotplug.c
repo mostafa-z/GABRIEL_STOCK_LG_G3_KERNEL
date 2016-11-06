@@ -28,8 +28,8 @@
 #define INTELLI_PLUG_MINOR_VERSION	4
 
 #define DEF_SAMPLING_MS			30
-#define RESUME_SAMPLING_MS		HZ / 10
-#define START_DELAY_MS			HZ * 10
+#define RESUME_SAMPLING_MS		100
+#define START_DELAY_MS			10000
 #define MIN_INPUT_INTERVAL		150 * 1000L
 #define BOOST_LOCK_DUR			500 * 1000L
 #define DEFAULT_NR_CPUS_BOOSTED		2
@@ -361,8 +361,7 @@ static void __ref intelli_plug_resume(void)
 static int state_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data)
 {
-	if ((atomic_read(&intelli_plug_active) == 0) ||
-			hotplug_suspended)
+	if (atomic_read(&intelli_plug_active) == 0)
 		return NOTIFY_OK;
 
 	switch (event) {
@@ -523,7 +522,7 @@ static int __ref intelli_plug_start(void)
 	}
 
 	queue_delayed_work_on(0, intelliplug_wq, &intelli_plug_work,
-			      START_DELAY_MS);
+			      msecs_to_jiffies(START_DELAY_MS));
 
 	return ret;
 err_dev:
