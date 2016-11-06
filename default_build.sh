@@ -188,7 +188,9 @@ NR_CPUS;
 
 	touch WORKING_DIR/package/compile.log
 	echo -e "\n***************************************************" > $LOG
-	echo -e "\nGIT branch is at : "$GIT_BRANCH >> $LOG
+	echo -e "\nGIT branch and last commit : " >> $LOG
+	git log --oneline --decorate -n 1 >> $LOG
+	echo -e ""
 	echo "CPU : compile with "$NR_CPUS"-way multitask processing" >> $LOG
 	echo "Toolchain: "$TC >> $LOG
 
@@ -219,7 +221,9 @@ NR_CPUS;
 	sleep 3
 
 	echo -e "\n***************************************************" > $LOG
-	echo -e "\nGIT branch is at : "$GIT_BRANCH >> $LOG
+	echo -e "\nGIT branch and last commit : " >> $LOG
+	git log --oneline --decorate -n 1 >> $LOG
+	echo -e ""
 	echo -e "CPU : compile with "$NR_CPUS"-way multitask processing" >> $LOG
 	echo -e "Toolchain: "$TC >> $LOG
 
