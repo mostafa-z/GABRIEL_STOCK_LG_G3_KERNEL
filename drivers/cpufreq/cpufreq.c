@@ -1171,10 +1171,10 @@ cpufreq_freq_attr_ro(bios_limit);
 cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
 cpufreq_freq_attr_ro(cpu_utilization);
-cpufreq_freq_attr_rw(scaling_min_freq);
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 cpufreq_freq_attr_rw(UV_mV_table);
 #endif
+cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
@@ -1208,11 +1208,11 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
-	&policy_min_freq.attr,
-	&policy_max_freq.attr,
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 	&UV_mV_table.attr,
 #endif
+	&policy_min_freq.attr,
+	&policy_max_freq.attr,
 	NULL
 };
 
@@ -2287,16 +2287,14 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	int update_index = 0;
 #endif
 
+	if (cpufreq_disabled())
+		return -ENODEV;
+
 #if defined(CONFIG_LGE_LOW_BATT_LIMIT)
 	if(!low_battery_limit[policy->cpu].table) {
 		init_freq_table();
 	}
 #endif
-	pr_debug("target for CPU %u: %u kHz, relation %u \n", policy->cpu,
-		target_freq, relation );
-
-	if (cpufreq_disabled())
-		return -ENODEV;
 
 	/* Make sure that target_freq is within supported range */
 	if (target_freq > policy->max)
@@ -3009,6 +3007,7 @@ static int __init cpufreq_core_init(void)
 
 	cpufreq_global_kobject = kobject_create_and_add("cpufreq", &cpu_subsys.dev_root->kobj);
 	BUG_ON(!cpufreq_global_kobject);
+	register_syscore_ops(&cpufreq_syscore_ops);
 #if defined(CONFIG_LGE_LOW_BATT_LIMIT)
 	parse_batt_soc_bootarg();
 #endif
@@ -3017,8 +3016,6 @@ static int __init cpufreq_core_init(void)
 	cpufreq_kset = kset_create_and_add("kset", NULL, cpufreq_global_kobject);
 	BUG_ON(!cpufreq_kset);
 	cpufreq_global_kobject->kset = cpufreq_kset;
-
-	register_syscore_ops(&cpufreq_syscore_ops);
 
 #ifdef CONFIG_MULTI_CPU_POLICY_LIMIT
 	rc = sysfs_create_group(cpufreq_global_kobject, &all_cpus_attr_group);
