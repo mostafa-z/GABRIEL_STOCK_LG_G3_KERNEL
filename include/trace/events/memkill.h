@@ -10,6 +10,7 @@
 #include <linux/sched.h>
 #include <linux/types.h>
 
+#if 0 /* fix build without changing config, multiple definition of tracepoint */
 TRACE_EVENT(oom_kill,
 		TP_PROTO(pid_t pid_nr, const char *comm,
 			unsigned long total_vm, unsigned long anon_rss,
@@ -124,6 +125,7 @@ TRACE_EVENT(lmk_kill,
 				__entry->selected_tasksize, __entry->min_adj,
 				__entry->cached, __entry->freeswap)
 );
+#endif
 
 #endif /* _TRACE_MEMKILL_H */
 
