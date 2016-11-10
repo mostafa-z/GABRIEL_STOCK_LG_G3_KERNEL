@@ -72,28 +72,28 @@ static int lowmem_adj[6] = {
 };
 static int lowmem_adj_size = 6;
 static int lowmem_minfree[6] = {
-	 3 *  512,	/* Foreground App: 	6 MB	*/
-	 2 * 1024,	/* Visible App: 	8 MB	*/
-	 4 * 1024,	/* Secondary Server: 	16 MB	*/
+	 4 * 1024,	/* Foreground App: 	16 MB	*/
+	 8 * 1024,	/* Visible App: 	32 MB	*/
+	16 * 1024,	/* Secondary Server: 	65 MB	*/
 	28 * 1024,	/* Hidden App: 		114 MB	*/
-	31 * 1024,	/* Content Provider: 	127 MB	*/
-	34 * 1024,	/* Empty App: 		139 MB	*/
+	45 * 1024,	/* Content Provider: 	184 MB	*/
+	50 * 1024, /* Empty App: 		204 MB	*/
 };
 static int lowmem_minfree_screen_off[6] = {
-	3 * 512,	/* 6MB */
-	2 * 1024,	/* 8MB */
-	4 * 1024,	/* 16MB */
-	28 * 1024,	/* 114MB */
-	31 * 1024,	/* 127 MB */
-	34 * 1024,	/* 139 MB */
+	 4 * 1024,	/* 16 MB */
+	 8 * 1024,	/* 32 MB */
+	16 * 1024,	/* 65 MB */
+	28 * 1024,	/* 114 MB */
+	45 * 1024,	/* 184 MB */
+	50 * 1024, /* 204 MB */
 };
 static int lowmem_minfree_screen_on[6] = {
-	3 * 512,	/* 6MB */
-	2 * 1024,	/* 8MB */
-	4 * 1024,	/* 16MB */
-	28 * 1024,	/* 114MB */
-	31 * 1024,	/* 127 MB */
-	34 * 1024, /* 139 MB */
+	 4 * 1024,	/* 16 MB */
+	 8 * 1024,	/* 32 MB */
+	16 * 1024,	/* 65 MB */
+	28 * 1024,	/* 114 MB */
+	45 * 1024,	/* 184 MB */
+	50 * 1024, /* 204 MB */
 };
 static int lowmem_minfree_size = 6;
 static int lmk_fast_run = 1;
@@ -124,7 +124,7 @@ module_param_named(enable_adaptive_lmk, enable_adaptive_lmk, int,
  * 90-94. Usually this is a pseudo minfree value, higher than the
  * highest configured value in minfree array.
  */
-static int vmpressure_file_min = 66560; /* (65 * 1024) * 4 = 266 MB */;
+static int vmpressure_file_min = 73728; /* (72 * 1024) * 4 = 294 MB */
 module_param_named(vmpressure_file_min, vmpressure_file_min, int,
 	S_IRUGO | S_IWUSR);
 
