@@ -894,8 +894,7 @@ static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
 	struct worker *worker;
 	struct hlist_node *tmp;
 
-	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry,
-			       (unsigned long)work)
+	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
 		if (worker->current_work == work &&
 		    worker->current_func == work->func)
 			return worker;
@@ -3721,7 +3720,11 @@ void freeze_workqueues_begin(void)
 		}
 
 		list_for_each_entry(wq, &workqueues, list) {
-			struct cpu_workqueue_struct *cwq = get_cwq(cpu, wq);
+			struct cpu_workqueue_struct *cwq;
+			if (cpu < CONFIG_NR_CPUS)
+				cwq = get_cwq(cpu, wq);
+			else
+				continue;
 
 			if (cwq && wq->flags & WQ_FREEZABLE)
 				cwq->max_active = 0;
@@ -3762,7 +3765,11 @@ bool freeze_workqueues_busy(void)
 		 * to peek without lock.
 		 */
 		list_for_each_entry(wq, &workqueues, list) {
-			struct cpu_workqueue_struct *cwq = get_cwq(cpu, wq);
+			struct cpu_workqueue_struct *cwq;
+			if (cpu < CONFIG_NR_CPUS)
+				cwq = get_cwq(cpu, wq);
+			else
+				continue;
 
 			if (!cwq || !(wq->flags & WQ_FREEZABLE))
 				continue;
@@ -3907,4 +3914,3 @@ static int __init init_workqueues(void)
 	return 0;
 }
 early_initcall(init_workqueues);
-
