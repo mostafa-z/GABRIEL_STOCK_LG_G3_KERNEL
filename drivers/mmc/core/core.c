@@ -1602,7 +1602,7 @@ void mmc_set_ios(struct mmc_host *host)
 				mmc_hostname(host), ios->old_rate / 1000,
 				ios->clock / 1000, jiffies_to_msecs(
 					(long)jiffies - (long)ios->clk_ts));
-			trace_mmc_clk(trace_info);
+//			trace_mmc_clk(trace_info);
 		}
 		ios->old_rate = ios->clock;
 		ios->clk_ts = jiffies;
