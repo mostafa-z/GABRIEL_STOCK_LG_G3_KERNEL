@@ -179,7 +179,6 @@ struct qseecom_control {
 	struct work_struct bw_inactive_req_ws;
 	struct cdev cdev;
 	bool timer_running;
-	bool appsbl_qseecom_support;
 	unsigned int ce_opp_freq_hz;
 	bool appsbl_qseecom_support;
 };
