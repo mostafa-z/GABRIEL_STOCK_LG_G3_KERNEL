@@ -26,6 +26,7 @@
 #include <linux/init.h>
 #include <linux/compiler.h>
 #include <linux/rbtree.h>
+#include <linux/version.h>
 
 #include <asm/div64.h>
 
@@ -39,32 +40,32 @@ enum vr_head_dir {
 	BACKWARD,
 };
 
-static const int sync_expire = HZ / 2; /* max time before a sync is submitted. */
-static const int async_expire = 5 * HZ; /* ditto for async, these limits are SOFT! */
+static const int sync_expire = 1000; /* max time before a sync is submitted. */
+static const int async_expire = 5000; /* ditto for async, these limits are SOFT! */
 static const int fifo_batch = 1;
-static const int rev_penalty = 10; /* penalty for reversing head direction */
+static const int rev_penalty = 1; /* penalty for reversing head direction */
 
 struct vr_data {
-struct rb_root sort_list;
-struct list_head fifo_list[2];
+	struct rb_root sort_list;
+	struct list_head fifo_list[2];
 
-struct request *next_rq;
-struct request *prev_rq;
+	struct request *next_rq;
+	struct request *prev_rq;
 
-unsigned int nbatched;
-sector_t last_sector; /* head position */
-int head_dir;
+	unsigned int nbatched;
+	sector_t last_sector; /* head position */
+	int head_dir;
 
-/* tunables */
-int fifo_expire[2];
-int fifo_batch;
-int rev_penalty;
+	/* tunables */
+	int fifo_expire[2];
+	int fifo_batch;
+	int rev_penalty;
 };
 
 static void vr_move_request(struct vr_data *, struct request *);
 
 static inline struct vr_data *
-vr_get_data(struct request_queue *q)
+		vr_get_data(struct request_queue *q)
 {
 	return q->elevator->elevator_data;
 }
@@ -90,9 +91,9 @@ static void
 vr_del_rq_rb(struct vr_data *vd, struct request *rq)
 {
 	/*
-	* We might be deleting our cached next request.
-	* If so, find its sucessor.
-	*/
+	 * We might be deleting our cached next request.
+	 * If so, find its sucessor.
+	 */
 
 	if (vd->next_rq == rq)
 		vd->next_rq = elv_rb_latter_request(NULL, rq);
@@ -115,7 +116,7 @@ vr_add_request(struct request_queue *q, struct request *rq)
 	const int dir = rq_is_sync(rq);
 
 	vr_add_rq_rb(vd, rq);
-	
+
 	if (vd->fifo_expire[dir]) {
 		rq_set_fifo_time(rq, jiffies + vd->fifo_expire[dir]);
 		list_add_tail(&rq->queuelist, &vd->fifo_list[dir]);
@@ -140,11 +141,12 @@ vr_merge(struct request_queue *q, struct request **rqp, struct bio *bio)
 	sector_t sector = bio->bi_sector + bio_sectors(bio);
 	struct vr_data *vd = vr_get_data(q);
 	struct request *rq = elv_rb_find(&vd->sort_list, sector);
-	
+
 	if (rq && elv_rq_merge_ok(rq, bio)) {
 		*rqp = rq;
 		return ELEVATOR_FRONT_MERGE;
 	}
+
 	return ELEVATOR_NO_MERGE;
 }
 
@@ -164,7 +166,7 @@ vr_merged_request(struct request_queue *q, struct request *req, int type)
 
 static void
 vr_merged_requests(struct request_queue *q, struct request *rq,
-struct request *next)
+			struct request *next)
 {
 	/*
 	 * if next expires before rq, assign its expire time to rq
@@ -234,24 +236,23 @@ vr_check_fifo(struct vr_data *vd)
 	if (rq_async && rq_sync) {
 		if (time_after(rq_fifo_time(rq_async), rq_fifo_time(rq_sync)))
 			return rq_sync;
-	}
-	else if (rq_sync)
+	} else if (rq_sync)
 		return rq_sync;
 
 	return rq_async;
 }
 
 /*
-* Return the request with the lowest penalty
-*/
+ * Return the request with the lowest penalty
+ */
 static struct request *
-vr_choose_request(struct vr_data *vd)
+		vr_choose_request(struct vr_data *vd)
 {
 	int penalty = (vd->rev_penalty) ? : INT_MAX;
 	struct request *next = vd->next_rq;
 	struct request *prev = vd->prev_rq;
 	sector_t next_pen, prev_pen;
-	
+
 	BUG_ON(prev && prev == next);
 
 	if (!prev)
@@ -259,7 +260,7 @@ vr_choose_request(struct vr_data *vd)
 	else if (!next)
 		return prev;
 
-/* At this point both prev and next are defined and distinct */
+	/* At this point both prev and next are defined and distinct */
 
 	next_pen = blk_rq_pos(next) - vd->last_sector;
 	prev_pen = vd->last_sector - blk_rq_pos(prev);
@@ -281,7 +282,7 @@ vr_dispatch_requests(struct request_queue *q, int force)
 	struct vr_data *vd = vr_get_data(q);
 	struct request *rq = NULL;
 
-/* Check for and issue expired requests */
+	/* Check for and issue expired requests */
 	if (vd->nbatched > vd->fifo_batch) {
 		vd->nbatched = 0;
 		rq = vr_check_fifo(vd);
@@ -298,6 +299,14 @@ vr_dispatch_requests(struct request_queue *q, int force)
 	return 1;
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
+static int
+vr_queue_empty(struct request_queue *q)
+{
+	struct vr_data *vd = vr_get_data(q);
+	return RB_EMPTY_ROOT(&vd->sort_list);
+}
+#endif
 
 static void
 vr_exit_queue(struct elevator_queue *e)
@@ -308,15 +317,23 @@ vr_exit_queue(struct elevator_queue *e)
 }
 
 /*
-* initialize elevator private data (vr_data).
-*/
-static void *vr_init_queue(struct request_queue *q)
+ * initialize elevator private data (vr_data).
+ */
+static int vr_init_queue(struct request_queue *q, struct elevator_type *e)
 {
 	struct vr_data *vd;
-	
+	struct elevator_queue *eq;
+
+	eq = elevator_alloc(q, e);
+	if (!eq)
+		return -ENOMEM;
+
 	vd = kmalloc_node(sizeof(*vd), GFP_KERNEL | __GFP_ZERO, q->node);
-	if (!vd)
-		return NULL;
+	if (!vd) {
+		kobject_put(&eq->kobj);
+		return -ENOMEM;
+	}
+	eq->elevator_data = vd;
 
 	INIT_LIST_HEAD(&vd->fifo_list[SYNC]);
 	INIT_LIST_HEAD(&vd->fifo_list[ASYNC]);
@@ -325,15 +342,17 @@ static void *vr_init_queue(struct request_queue *q)
 	vd->fifo_expire[ASYNC] = async_expire;
 	vd->fifo_batch = fifo_batch;
 	vd->rev_penalty = rev_penalty;
-	return vd;
+
+	spin_lock_irq(q->queue_lock);
+	q->elevator = eq;
+	spin_unlock_irq(q->queue_lock);
+	return 0;
 }
 
 /*
  * sysfs parts below
  */
-
-static ssize_t
-vr_var_show(int var, char *page)
+static ssize_t vr_var_show(int var, char *page)
 {
 	return sprintf(page, "%d\n", var);
 }
@@ -346,13 +365,13 @@ vr_var_store(int *var, const char *page, size_t count)
 }
 
 #define SHOW_FUNCTION(__FUNC, __VAR, __CONV) \
-static ssize_t __FUNC(struct elevator_queue *e, char *page) \
-{ \
-struct vr_data *vd = e->elevator_data; \
-int __data = __VAR; \
-if (__CONV) \
-__data = jiffies_to_msecs(__data); \
-return vr_var_show(__data, (page)); \
+	static ssize_t __FUNC(struct elevator_queue *e, char *page) \
+	{ \
+	struct vr_data *vd = e->elevator_data; \
+	int __data = __VAR; \
+	if (__CONV) \
+		__data = jiffies_to_msecs(__data); \
+	return vr_var_show(__data, (page)); \
 }
 SHOW_FUNCTION(vr_sync_expire_show, vd->fifo_expire[SYNC], 1);
 SHOW_FUNCTION(vr_async_expire_show, vd->fifo_expire[ASYNC], 1);
@@ -362,19 +381,19 @@ SHOW_FUNCTION(vr_rev_penalty_show, vd->rev_penalty, 0);
 
 #define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV) \
 static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count) \
-{ \
-struct vr_data *vd = e->elevator_data; \
-int __data; \
-int ret = vr_var_store(&__data, (page), count); \
-if (__data < (MIN)) \
-__data = (MIN); \
-else if (__data > (MAX)) \
-__data = (MAX); \
-if (__CONV) \
-*(__PTR) = msecs_to_jiffies(__data); \
-else \
-*(__PTR) = __data; \
-return ret; \
+	{ \
+	struct vr_data *vd = e->elevator_data; \
+	int __data; \
+	int ret = vr_var_store(&__data, (page), count); \
+	if (__data < (MIN)) \
+		__data = (MIN); \
+	else if (__data > (MAX)) \
+		__data = (MAX); \
+		if (__CONV) \
+			*(__PTR) = msecs_to_jiffies(__data); \
+		else \
+			*(__PTR) = __data; \
+	return ret; \
 }
 STORE_FUNCTION(vr_sync_expire_store, &vd->fifo_expire[SYNC], 0, INT_MAX, 1);
 STORE_FUNCTION(vr_async_expire_store, &vd->fifo_expire[ASYNC], 0, INT_MAX, 1);
@@ -383,8 +402,8 @@ STORE_FUNCTION(vr_rev_penalty_store, &vd->rev_penalty, 0, INT_MAX, 0);
 #undef STORE_FUNCTION
 
 #define DD_ATTR(name) \
-__ATTR(name, S_IRUGO|S_IWUSR, vr_##name##_show, \
-vr_##name##_store)
+	__ATTR(name, S_IRUGO|S_IWUSR, vr_##name##_show, \
+	vr_##name##_store)
 
 static struct elv_fs_entry vr_attrs[] = {
 	DD_ATTR(sync_expire),
@@ -401,22 +420,23 @@ static struct elevator_type iosched_vr = {
 		.elevator_merge_req_fn = vr_merged_requests,
 		.elevator_dispatch_fn = vr_dispatch_requests,
 		.elevator_add_req_fn = vr_add_request,
+		#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
+		.elevator_queue_empty_fn = vr_queue_empty,
+		#endif
 		.elevator_former_req_fn = elv_rb_former_request,
 		.elevator_latter_req_fn = elv_rb_latter_request,
 		.elevator_init_fn = vr_init_queue,
 		.elevator_exit_fn = vr_exit_queue,
 	},
 
-	.elevator_attrs = vr_attrs,
-	.elevator_name = "vr",
-	.elevator_owner = THIS_MODULE,
+		.elevator_attrs = vr_attrs,
+		.elevator_name = "vr",
+		.elevator_owner = THIS_MODULE,
 };
-	
+
 static int __init vr_init(void)
 {
-	elv_register(&iosched_vr);
-
-	return 0;
+	return elv_register(&iosched_vr);
 }
 
 static void __exit vr_exit(void)
