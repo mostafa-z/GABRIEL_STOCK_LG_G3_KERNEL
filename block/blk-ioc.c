@@ -167,6 +167,7 @@ void put_io_context_active(struct io_context *ioc)
 {
 	unsigned long flags;
 	struct io_cq *icq;
+	struct hlist_node *n;
 
 	if (!atomic_dec_and_test(&ioc->active_ref)) {
 		put_io_context(ioc);
