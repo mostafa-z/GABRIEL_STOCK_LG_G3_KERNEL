@@ -54,13 +54,6 @@
 
 #include "printk_interface.h"
 
-/*
- * Architectures can override it:
- */
-void asmlinkage __attribute__((weak)) early_printk(const char *fmt, ...)
-{
-}
-
 #ifdef CONFIG_EARLY_PRINTK_DIRECT
 extern void printascii(char *);
 #endif
@@ -1802,10 +1795,9 @@ asmlinkage int vprintk_emit(int facility, int level,
 	int this_cpu;
 	int printed_len = 0;
 
-<<<<<<< HEAD
 	// if printk mode is disabled, terminate instantly
 	if (printk_mode == 0)
-			return 0;
+		return 0;
 
 	boot_delay_msec(level);
 	printk_delay();
@@ -1905,13 +1897,11 @@ asmlinkage int vprintk_emit(int facility, int level,
 		bool stored = false;
 
 		/*
-		 * Flush the conflicting buffer. An earlier newline was missing,
-		 * or we race with a continuation line from an interrupt.
+		 * If an earlier newline was missing and it was the same task,
+		 * either merge it with the current buffer and flush, or if
+		 * there was a race with interrupts (prefix == true) then just
+		 * flush it out and store this line separately.
 		 */
-		if (cont.len && prefix && cont.owner == current)
-			cont_flush();
-
-		/* Merge with our buffer if possible; flush it in any case */
 		if (cont.len && cont.owner == current) {
 			if (!(lflags & LOG_PREFIX))
 				stored = cont_add(facility, level, text, text_len);
@@ -1994,6 +1984,10 @@ asmlinkage int printk(const char *fmt, ...)
 
 	uncached_logk_pc(LOGK_LOGBUF, caller, (void *)log_next_idx);
 #endif
+
+	// if printk mode is disabled, terminate instantly
+	if (printk_mode == 0)
+		return 0;
 
 #ifdef CONFIG_KGDB_KDB
 	if (unlikely(kdb_trap_printk)) {
