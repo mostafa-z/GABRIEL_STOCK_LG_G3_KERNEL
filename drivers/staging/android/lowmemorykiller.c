@@ -228,14 +228,19 @@ static bool avoid_to_kill(uid_t uid)
 {
 	/* 
 	 * uid info
+	 * using: id -u process_name
 	 * uid == 0 > root
 	 * uid == 1001 > radio
 	 * uid == 1002 > bluetooth
 	 * uid == 1010 > wifi
+	 * uid == 1013 > media
 	 * uid == 1014 > dhcp
+	 * uid == 1021 > gps
+	 * uid == 1027 > nfc
+	 * uid == 1006 > camera
 	 */
 	if (uid == 1001 || uid == 1002 || uid == 1010
-			|| uid == 1014 || uid == 1021 ||
+			|| uid == 1014 || uid == 1021 || uid == 1006 ||
 			uid == 1027)
 		return 1;
 	return 0;
@@ -245,7 +250,8 @@ static bool protected_apps(char *comm)
 	if (strcmp(comm, "d.process.acore") == 0 ||
 			strcmp(comm, "ndroid.systemui") == 0 ||
 			strcmp(comm, "ndroid.contacts") == 0 ||
-			strcmp(comm, "system:ui") == 0)
+			strcmp(comm, "system:ui") == 0 ||
+			strcmp(comm, "coilsw.launcher") == 0)
 		return 1;
 	return 0;
 }
