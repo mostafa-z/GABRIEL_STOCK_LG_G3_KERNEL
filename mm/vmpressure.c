@@ -56,6 +56,7 @@ static unsigned long vmpressure_scale_max = 100;
 module_param_named(vmpressure_scale_max, vmpressure_scale_max,
 			ulong, S_IRUGO | S_IWUSR);
 
+/* vmpressure values >= this will be scaled based on allocstalls */
 static unsigned long allocstall_threshold = 70;
 module_param_named(allocstall_threshold, allocstall_threshold,
 			ulong, S_IRUGO | S_IWUSR);
@@ -237,12 +238,12 @@ static void vmpressure_work_fn(struct work_struct *work)
 	if (!vmpr->scanned)
 		return;
 
-	spin_lock(&vmpr->sr_lock);
+	mutex_lock(&vmpr->sr_lock);
 	scanned = vmpr->scanned;
 	reclaimed = vmpr->reclaimed;
 	vmpr->scanned = 0;
 	vmpr->reclaimed = 0;
-	spin_unlock(&vmpr->sr_lock);
+	mutex_unlock(&vmpr->sr_lock);
 
 	do {
 		if (vmpressure_event(vmpr, scanned, reclaimed))
@@ -286,11 +287,11 @@ void vmpressure_memcg(gfp_t gfp, struct mem_cgroup *memcg,
 	if (!scanned)
 		return;
 
-	spin_lock(&vmpr->sr_lock);
+	mutex_lock(&vmpr->sr_lock);
 	vmpr->scanned += scanned;
 	vmpr->reclaimed += reclaimed;
 	scanned = vmpr->scanned;
-	spin_unlock(&vmpr->sr_lock);
+	mutex_unlock(&vmpr->sr_lock);
 
 	if (scanned < vmpressure_win || work_pending(&vmpr->work))
 		return;
@@ -310,7 +311,7 @@ void vmpressure_global(gfp_t gfp, unsigned long scanned,
 	if (!scanned)
 		return;
 
-	spin_lock(&vmpr->sr_lock);
+	mutex_lock(&vmpr->sr_lock);
 	vmpr->scanned += scanned;
 	vmpr->reclaimed += reclaimed;
 
@@ -320,16 +321,16 @@ void vmpressure_global(gfp_t gfp, unsigned long scanned,
 	stall = vmpr->stall;
 	scanned = vmpr->scanned;
 	reclaimed = vmpr->reclaimed;
-	spin_unlock(&vmpr->sr_lock);
+	mutex_unlock(&vmpr->sr_lock);
 
 	if (scanned < vmpressure_win)
 		return;
 
-	spin_lock(&vmpr->sr_lock);
+	mutex_lock(&vmpr->sr_lock);
 	vmpr->scanned = 0;
 	vmpr->reclaimed = 0;
 	vmpr->stall = 0;
-	spin_unlock(&vmpr->sr_lock);
+	mutex_unlock(&vmpr->sr_lock);
 
 	pressure = vmpressure_calc_pressure(scanned, reclaimed);
 	pressure = vmpressure_account_stall(pressure, stall, scanned);
@@ -480,7 +481,7 @@ void vmpressure_unregister_event(struct cgroup *cg, struct cftype *cft,
  */
 void vmpressure_init(struct vmpressure *vmpr)
 {
-	spin_lock_init(&vmpr->sr_lock);
+	mutex_init(&vmpr->sr_lock);
 	mutex_init(&vmpr->events_lock);
 	INIT_LIST_HEAD(&vmpr->events);
 	INIT_WORK(&vmpr->work, vmpressure_work_fn);
