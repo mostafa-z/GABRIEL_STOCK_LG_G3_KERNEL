@@ -56,7 +56,7 @@ BOOT=(arch/arm/boot);
 DTC=(scripts/dtc);
 DCONF=(arch/arm/configs);
 STOCK_DEF=(g3-global_com-perf_defconfig);
-NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/cyanogenmod_d855_defconfig | cut -c 23-28);
+NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/gabriel_d855_defconfig | cut -c 23-28);
 
 export PATH=$PATH:tools/lz4demo
 #===============================================================================
@@ -408,56 +408,56 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 	case "$CHOICE" in
 		"D850")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d850_defconfig
+			CUSTOM_DEF=gabriel_d850_defconfig
 			MODEL=D850
 			RAMDISK=D850
 			REBUILD;
 			break;;
 		"D851")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d851_defconfig
+			CUSTOM_DEF=gabriel_d851_defconfig
 			MODEL=D851
 			RAMDISK=D851
 			REBUILD;
 			break;;
 		"D852")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d852_defconfig
+			CUSTOM_DEF=gabriel_d852_defconfig
 			MODEL=D852
 			RAMDISK=D852
 			REBUILD;
 			break;;
 		"D855_16")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d855_16_defconfig
+			CUSTOM_DEF=gabriel_d855_16_defconfig
 			MODEL=D855_16
 			RAMDISK=D855
 			REBUILD;
 			break;;
 		"D855_32")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d855_defconfig
+			CUSTOM_DEF=gabriel_d855_defconfig
 			MODEL=D855_32
 			RAMDISK=D855
 			REBUILD;
 			break;;
 		"VS985")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_vs985_defconfig
+			CUSTOM_DEF=gabriel_vs985_defconfig
 			MODEL=VS985
 			RAMDISK=VS985
 			REBUILD;
 			break;;
 		"LS990")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_ls990_defconfig
+			CUSTOM_DEF=gabriel_ls990_defconfig
 			MODEL=LS990
 			RAMDISK=LS990
 			REBUILD;
 			break;;
 		"F400")
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_f400_defconfig
+			CUSTOM_DEF=gabriel_f400_defconfig
 			MODEL=F400
 			RAMDISK=F400
 			REBUILD;
@@ -470,7 +470,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of D850 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d850_defconfig
+			CUSTOM_DEF=gabriel_d850_defconfig
 			MODEL=D850
 			RAMDISK=D850
 			REBUILD;
@@ -482,7 +482,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of D851 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d851_defconfig
+			CUSTOM_DEF=gabriel_d851_defconfig
 			MODEL=D851
 			RAMDISK=D851
 			REBUILD;
@@ -494,7 +494,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of D852 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d852_defconfig
+			CUSTOM_DEF=gabriel_d852_defconfig
 			MODEL=D852
 			RAMDISK=D852
 			REBUILD;
@@ -506,7 +506,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of D855_16 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d855_16_defconfig
+			CUSTOM_DEF=gabriel_d855_16_defconfig
 			MODEL=D855_16
 			RAMDISK=D855
 			REBUILD;
@@ -518,7 +518,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of D855_32 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_d855_defconfig
+			CUSTOM_DEF=gabriel_d855_defconfig
 			MODEL=D855_32
 			RAMDISK=D855
 			REBUILD;
@@ -530,7 +530,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of VS985 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_vs985_defconfig
+			CUSTOM_DEF=gabriel_vs985_defconfig
 			MODEL=VS985
 			RAMDISK=VS985
 			REBUILD;
@@ -542,7 +542,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of LS990 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_ls990_defconfig
+			CUSTOM_DEF=gabriel_ls990_defconfig
 			MODEL=LS990
 			RAMDISK=LS990
 			REBUILD;
@@ -554,7 +554,7 @@ select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD 
 			echo "starting build of F400 in 1"
 			sleep 1;
 			CLEANUP;
-			CUSTOM_DEF=cyanogenmod_f400_defconfig
+			CUSTOM_DEF=gabriel_f400_defconfig
 			MODEL=F400
 			RAMDISK=F400
 			REBUILD;
