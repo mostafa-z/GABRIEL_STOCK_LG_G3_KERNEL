@@ -199,7 +199,7 @@ NR_CPUS;
 	echo -e $COLOR_GREEN"\nI'm coocking, make a coffee ..." $COLOR_NEUTRAL
 	echo ""
 	make ARCH=arm CROSS_COMPILE=$TC zImage-dtb -j $NR_CPUS | grep :
-#	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
@@ -233,7 +233,7 @@ NR_CPUS;
 	echo ""
 	TIMESTAMP1=$(date +%s)
 	make ARCH=arm CROSS_COMPILE=$TC zImage-dtb -j $NR_CPUS | grep :
-#	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
@@ -258,20 +258,20 @@ POST_BUILD()
 if [ -f arch/arm/boot/zImage-dtb ]
 	then
 
-#	if [ -d $WD/package/system/lib/modules ]; then
-#		rm -rf $WD/package/system/lib/modules/*
-#	else
-#		mkdir $WD/package/system/lib/modules
-#	fi;
+	if [ -d $WD/package/system/lib/modules ]; then
+		rm -rf $WD/package/system/lib/modules/*
+	else
+		mkdir $WD/package/system/lib/modules
+	fi;
 
-#	find . -name '*ko' -not -path "*TOOLCHAIN/*" -exec \cp '{}' $WD/package/system/lib/modules/ \;
-#	chmod 755 $WD/package/system/lib/modules/*
-#	echo "Modules has been copied" >> $LOG
+	find . -name '*ko' -not -path "*TOOLCHAIN/*" -exec \cp '{}' $WD/package/system/lib/modules/ \;
+	chmod 755 $WD/package/system/lib/modules/*
+	echo "Modules has been copied" >> $LOG
 
 # strip not needed debugs from modules.
-#	"$TC"strip --strip-unneeded $WD/package/system/lib/modules/* 2>/dev/null >> $LOG
-#	"$TC"strip --strip-debug $WD/package/system/lib/modules/* 2>/dev/null >> $LOG
-#	echo "Modules has been striped" >> $LOG
+	"$TC"strip --strip-unneeded $WD/package/system/lib/modules/* 2>/dev/null >> $LOG
+	"$TC"strip --strip-debug $WD/package/system/lib/modules/* 2>/dev/null >> $LOG
+	echo "Modules has been striped" >> $LOG
 
 	echo "generating device tree..."
 	echo ""
