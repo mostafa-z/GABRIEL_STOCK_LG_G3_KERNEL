@@ -87,7 +87,7 @@ static unsigned int upper_limit_freq[NR_CPUS] = {2457600, 2457600,
 static unsigned int lower_limit_freq[NR_CPUS] = {0, 0, 0, 0};
 static unsigned int lower_boost_limit_freq[NR_CPUS] = {0, 0, 0, 0};
 #define CPU_MAX_DEFAULT_FREQ	2457600
-#define CPU_MAX_OC_FREQ		2457600
+#define CPU_MAX_OC_FREQ		2880000
 #define CPU_MIN_DEFAULT_FREQ	300000
 
 unsigned int get_cpu_min_lock(unsigned int cpu)
