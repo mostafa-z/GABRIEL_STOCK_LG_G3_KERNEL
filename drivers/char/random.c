@@ -322,89 +322,95 @@ static int trickle_thresh __read_mostly = INPUT_POOL_WORDS * 28;
 static DEFINE_PER_CPU(int, trickle_count);
 
 /*
- * Originally, we used a primitive polynomial of degree .poolwords
- * over GF(2).  The taps for various sizes are defined below.  They
- * were chosen to be evenly spaced except for the last tap, which is 1
- * to get the twisting happening as fast as possible.
- *
+ * A pool of size .poolwords is stirred with a primitive polynomial
+ * of degree .poolwords over GF(2).  The taps for various sizes are
+ * defined below.  They are chosen to be evenly spaced (minimum RMS
+ * distance from evenly spaced; the numbers in the comments are a
+ * scaled squared error sum) except for the last tap, which is 1 to
+ * get the twisting happening as fast as possible.
+ */
+static struct poolinfo {
+	int poolwords;
+	int tap1, tap2, tap3, tap4, tap5;
+} poolinfo_table[] = {
+	/* x^128 + x^103 + x^76 + x^51 +x^25 + x + 1 -- 105 */
+	{ 128,	103,	76,	51,	25,	1 },
+	/* x^32 + x^26 + x^20 + x^14 + x^7 + x + 1 -- 15 */
+	{ 32,	26,	20,	14,	7,	1 },
+#if 0
+	/* x^2048 + x^1638 + x^1231 + x^819 + x^411 + x + 1  -- 115 */
+	{ 2048,	1638,	1231,	819,	411,	1 },
+
+	/* x^1024 + x^817 + x^615 + x^412 + x^204 + x + 1 -- 290 */
+	{ 1024,	817,	615,	412,	204,	1 },
+
+	/* x^1024 + x^819 + x^616 + x^410 + x^207 + x^2 + 1 -- 115 */
+	{ 1024,	819,	616,	410,	207,	2 },
+
+	/* x^512 + x^411 + x^308 + x^208 + x^104 + x + 1 -- 225 */
+	{ 512,	411,	308,	208,	104,	1 },
+
+	/* x^512 + x^409 + x^307 + x^206 + x^102 + x^2 + 1 -- 95 */
+	{ 512,	409,	307,	206,	102,	2 },
+	/* x^512 + x^409 + x^309 + x^205 + x^103 + x^2 + 1 -- 95 */
+	{ 512,	409,	309,	205,	103,	2 },
+
+	/* x^256 + x^205 + x^155 + x^101 + x^52 + x + 1 -- 125 */
+	{ 256,	205,	155,	101,	52,	1 },
+
+	/* x^128 + x^103 + x^78 + x^51 + x^27 + x^2 + 1 -- 70 */
+	{ 128,	103,	78,	51,	27,	2 },
+
+	/* x^64 + x^52 + x^39 + x^26 + x^14 + x + 1 -- 15 */
+	{ 64,	52,	39,	26,	14,	1 },
+#endif
+};
+
+#define POOLBITS	poolwords*32
+#define POOLBYTES	poolwords*4
+
+/*
  * For the purposes of better mixing, we use the CRC-32 polynomial as
- * well to make a (modified) twisted Generalized Feedback Shift
- * Register.  (See M. Matsumoto & Y. Kurita, 1992.  Twisted GFSR
- * generators.  ACM Transactions on Modeling and Computer Simulation
- * 2(3):179-194.  Also see M. Matsumoto & Y. Kurita, 1994.  Twisted
- * GFSR generators II.  ACM Transactions on Mdeling and Computer
- * Simulation 4:254-266)
+ * well to make a twisted Generalized Feedback Shift Reigster
+ *
+ * (See M. Matsumoto & Y. Kurita, 1992.  Twisted GFSR generators.  ACM
+ * Transactions on Modeling and Computer Simulation 2(3):179-194.
+ * Also see M. Matsumoto & Y. Kurita, 1994.  Twisted GFSR generators
+ * II.  ACM Transactions on Mdeling and Computer Simulation 4:254-266)
  *
  * Thanks to Colin Plumb for suggesting this.
  *
- * The mixing operation is much less sensitive than the output hash,
- * where we use SHA-1.  All that we want of mixing operation is that
- * it be a good non-cryptographic hash; i.e. it not produce collisions
- * when fed "random" data of the sort we expect to see.  As long as
- * the pool state differs for different inputs, we have preserved the
- * input entropy and done a good job.  The fact that an intelligent
- * attacker can construct inputs that will produce controlled
- * alterations to the pool's state is not important because we don't
- * consider such inputs to contribute any randomness.  The only
- * property we need with respect to them is that the attacker can't
- * increase his/her knowledge of the pool's state.  Since all
- * additions are reversible (knowing the final state and the input,
- * you can reconstruct the initial state), if an attacker has any
- * uncertainty about the initial state, he/she can only shuffle that
- * uncertainty about, but never cause any collisions (which would
+ * We have not analyzed the resultant polynomial to prove it primitive;
+ * in fact it almost certainly isn't.  Nonetheless, the irreducible factors
+ * of a random large-degree polynomial over GF(2) are more than large enough
+ * that periodicity is not a concern.
+ *
+ * The input hash is much less sensitive than the output hash.  All
+ * that we want of it is that it be a good non-cryptographic hash;
+ * i.e. it not produce collisions when fed "random" data of the sort
+ * we expect to see.  As long as the pool state differs for different
+ * inputs, we have preserved the input entropy and done a good job.
+ * The fact that an intelligent attacker can construct inputs that
+ * will produce controlled alterations to the pool's state is not
+ * important because we don't consider such inputs to contribute any
+ * randomness.  The only property we need with respect to them is that
+ * the attacker can't increase his/her knowledge of the pool's state.
+ * Since all additions are reversible (knowing the final state and the
+ * input, you can reconstruct the initial state), if an attacker has
+ * any uncertainty about the initial state, he/she can only shuffle
+ * that uncertainty about, but never cause any collisions (which would
  * decrease the uncertainty).
  *
- * Our mixing functions were analyzed by Lacharme, Roeck, Strubel, and
- * Videau in their paper, "The Linux Pseudorandom Number Generator
- * Revisited" (see: http://eprint.iacr.org/2012/251.pdf).  In their
- * paper, they point out that we are not using a true Twisted GFSR,
- * since Matsumoto & Kurita used a trinomial feedback polynomial (that
- * is, with only three taps, instead of the six that we are using).
- * As a result, the resulting polynomial is neither primitive nor
- * irreducible, and hence does not have a maximal period over
- * GF(2**32).  They suggest a slight change to the generator
- * polynomial which improves the resulting TGFSR polynomial to be
- * irreducible, which we have made here.
+ * The chosen system lets the state of the pool be (essentially) the input
+ * modulo the generator polymnomial.  Now, for random primitive polynomials,
+ * this is a universal class of hash functions, meaning that the chance
+ * of a collision is limited by the attacker's knowledge of the generator
+ * polynomail, so if it is chosen at random, an attacker can never force
+ * a collision.  Here, we use a fixed polynomial, but we *can* assume that
+ * ###--> it is unknown to the processes generating the input entropy. <-###
+ * Because of this important property, this is a good, collision-resistant
+ * hash; hash collisions will occur no more often than chance.
  */
-static struct poolinfo {
-	int poolbitshift, poolwords, poolbytes, poolbits;
-#define S(x) ilog2(x)+5, (x), (x)*4, (x)*32
-	int tap1, tap2, tap3, tap4, tap5;
-} poolinfo_table[] = {
-	/* was: x^128 + x^103 + x^76 + x^51 +x^25 + x + 1 */
-	/* x^128 + x^104 + x^76 + x^51 +x^25 + x + 1 */
-	{ S(128),	104,	76,	51,	25,	1 },
-	/* was: x^32 + x^26 + x^20 + x^14 + x^7 + x + 1 */
-	/* x^32 + x^26 + x^19 + x^14 + x^7 + x + 1 */
-	{ S(32),	26,	19,	14,	7,	1 },
-#if 0
-	/* x^2048 + x^1638 + x^1231 + x^819 + x^411 + x + 1  -- 115 */
-	{ S(2048),	1638,	1231,	819,	411,	1 },
-
-	/* x^1024 + x^817 + x^615 + x^412 + x^204 + x + 1 -- 290 */
-	{ S(1024),	817,	615,	412,	204,	1 },
-
-	/* x^1024 + x^819 + x^616 + x^410 + x^207 + x^2 + 1 -- 115 */
-	{ S(1024),	819,	616,	410,	207,	2 },
-
-	/* x^512 + x^411 + x^308 + x^208 + x^104 + x + 1 -- 225 */
-	{ S(512),	411,	308,	208,	104,	1 },
-
-	/* x^512 + x^409 + x^307 + x^206 + x^102 + x^2 + 1 -- 95 */
-	{ S(512),	409,	307,	206,	102,	2 },
-	/* x^512 + x^409 + x^309 + x^205 + x^103 + x^2 + 1 -- 95 */
-	{ S(512),	409,	309,	205,	103,	2 },
-
-	/* x^256 + x^205 + x^155 + x^101 + x^52 + x + 1 -- 125 */
-	{ S(256),	205,	155,	101,	52,	1 },
-
-	/* x^128 + x^103 + x^78 + x^51 + x^27 + x^2 + 1 -- 70 */
-	{ S(128),	103,	78,	51,	27,	2 },
-
-	/* x^64 + x^52 + x^39 + x^26 + x^14 + x + 1 -- 15 */
-	{ S(64),	52,	39,	26,	14,	1 },
-#endif
-};
 
 /*
  * Static global variables
@@ -413,6 +419,7 @@ static DECLARE_WAIT_QUEUE_HEAD(random_read_wait);
 static DECLARE_WAIT_QUEUE_HEAD(random_write_wait);
 static struct fasync_struct *fasync;
 
+#if 0
 static bool debug;
 module_param(debug, bool, 0644);
 #define DEBUG_ENT(fmt, arg...) do { \
@@ -423,6 +430,9 @@ module_param(debug, bool, 0644);
 		blocking_pool.entropy_count,\
 		nonblocking_pool.entropy_count,\
 		## arg); } while (0)
+#else
+#define DEBUG_ENT(fmt, arg...) do {} while (0)
+#endif
 
 /**********************************************************************
  *
@@ -447,7 +457,6 @@ struct entropy_store {
 	int entropy_count;
 	int entropy_total;
 	unsigned int initialized:1;
-	bool last_data_init;
 	__u8 last_data[EXTRACT_SIZE];
 };
 
@@ -459,7 +468,7 @@ static struct entropy_store input_pool = {
 	.poolinfo = &poolinfo_table[0],
 	.name = "input",
 	.limit = 1,
-	.lock = __SPIN_LOCK_UNLOCKED(input_pool.lock),
+	.lock = __SPIN_LOCK_UNLOCKED(&input_pool.lock),
 	.pool = input_pool_data
 };
 
@@ -468,7 +477,7 @@ static struct entropy_store blocking_pool = {
 	.name = "blocking",
 	.limit = 1,
 	.pull = &input_pool,
-	.lock = __SPIN_LOCK_UNLOCKED(blocking_pool.lock),
+	.lock = __SPIN_LOCK_UNLOCKED(&blocking_pool.lock),
 	.pool = blocking_pool_data
 };
 
@@ -476,7 +485,7 @@ static struct entropy_store nonblocking_pool = {
 	.poolinfo = &poolinfo_table[1],
 	.name = "nonblocking",
 	.pull = &input_pool,
-	.lock = __SPIN_LOCK_UNLOCKED(nonblocking_pool.lock),
+	.lock = __SPIN_LOCK_UNLOCKED(&nonblocking_pool.lock),
 	.pool = nonblocking_pool_data
 };
 
@@ -578,26 +587,21 @@ struct fast_pool {
  * collector.  It's hardcoded for an 128 bit pool and assumes that any
  * locks that might be needed are taken by the caller.
  */
-static void fast_mix(struct fast_pool *f, __u32 input[4])
+static void fast_mix(struct fast_pool *f, const void *in, int nbytes)
 {
+	const char	*bytes = in;
 	__u32		w;
+	unsigned	i = f->count;
 	unsigned	input_rotate = f->rotate;
 
-	w = rol32(input[0], input_rotate) ^ f->pool[0] ^ f->pool[3];
-	f->pool[0] = (w >> 3) ^ twist_table[w & 7];
-	input_rotate = (input_rotate + 14) & 31;
-	w = rol32(input[1], input_rotate) ^ f->pool[1] ^ f->pool[0];
-	f->pool[1] = (w >> 3) ^ twist_table[w & 7];
-	input_rotate = (input_rotate + 7) & 31;
-	w = rol32(input[2], input_rotate) ^ f->pool[2] ^ f->pool[1];
-	f->pool[2] = (w >> 3) ^ twist_table[w & 7];
-	input_rotate = (input_rotate + 7) & 31;
-	w = rol32(input[3], input_rotate) ^ f->pool[3] ^ f->pool[2];
-	f->pool[3] = (w >> 3) ^ twist_table[w & 7];
-	input_rotate = (input_rotate + 7) & 31;
-
+	while (nbytes--) {
+		w = rol32(*bytes++, input_rotate & 31) ^ f->pool[i & 3] ^
+			f->pool[(i + 1) & 3];
+		f->pool[i & 3] = (w >> 3) ^ twist_table[w & 7];
+		input_rotate += (i++ & 3) ? 7 : 14;
+	}
+	f->count = i;
 	f->rotate = input_rotate;
-	f->count++;
 }
 
 /*
@@ -618,8 +622,8 @@ retry:
 	if (entropy_count < 0) {
 		DEBUG_ENT("negative entropy/overflow\n");
 		entropy_count = 0;
-	} else if (entropy_count > r->poolinfo->poolbits)
-		entropy_count = r->poolinfo->poolbits;
+	} else if (entropy_count > r->poolinfo->POOLBITS)
+		entropy_count = r->poolinfo->POOLBITS;
 	if (cmpxchg(&r->entropy_count, orig, entropy_count) != orig)
 		goto retry;
 
@@ -652,8 +656,6 @@ struct timer_rand_state {
 	unsigned dont_count_entropy:1;
 };
 
-#define INIT_TIMER_RAND_STATE { INITIAL_JIFFIES, };
-
 /*
  * Add device- or boot-specific data to the input and nonblocking
  * pools to help initialize them to unique values.
@@ -673,7 +675,7 @@ void add_device_randomness(const void *buf, unsigned int size)
 }
 EXPORT_SYMBOL(add_device_randomness);
 
-static struct timer_rand_state input_timer_state = INIT_TIMER_RAND_STATE;
+static struct timer_rand_state input_timer_state;
 
 /*
  * This function adds entropy to the entropy "pool" by using timing
@@ -687,7 +689,6 @@ static struct timer_rand_state input_timer_state = INIT_TIMER_RAND_STATE;
  */
 static void add_timer_randomness(struct timer_rand_state *state, unsigned num)
 {
-	struct entropy_store	*r;
 	struct {
 		long jiffies;
 		unsigned cycles;
@@ -704,8 +705,7 @@ static void add_timer_randomness(struct timer_rand_state *state, unsigned num)
 	sample.jiffies = jiffies;
 	sample.cycles = random_get_entropy();
 	sample.num = num;
-	r = nonblocking_pool.initialized ? &input_pool : &nonblocking_pool;
-	mix_pool_bytes(r, &sample, sizeof(sample), NULL);
+	mix_pool_bytes(&input_pool, &sample, sizeof(sample), NULL);
 
 	/*
 	 * Calculate number of bits of randomness we probably added.
@@ -739,7 +739,8 @@ static void add_timer_randomness(struct timer_rand_state *state, unsigned num)
 		 * Round down by 1 bit on general principles,
 		 * and limit entropy entimate to 12 bits.
 		 */
-		credit_entropy_bits(r, min_t(int, fls(delta>>1), 11));
+		credit_entropy_bits(&input_pool,
+				    min_t(int, fls(delta>>1), 11));
 	}
 out:
 	preempt_enable();
@@ -769,21 +770,20 @@ void add_interrupt_randomness(int irq, int irq_flags)
 	struct fast_pool	*fast_pool = &__get_cpu_var(irq_randomness);
 	struct pt_regs		*regs = get_irq_regs();
 	unsigned long		now = jiffies;
-	cycles_t		cycles = random_get_entropy();
-	__u32			input[4], c_high, j_high;
-	__u64			ip;
+	__u32			input[4], cycles = random_get_entropy();
 
-	c_high = (sizeof(cycles) > 4) ? cycles >> 32 : 0;
-	j_high = (sizeof(now) > 4) ? now >> 32 : 0;
-	input[0] = cycles ^ j_high ^ irq;
-	input[1] = now ^ c_high;
-	ip = regs ? instruction_pointer(regs) : _RET_IP_;
-	input[2] = ip;
-	input[3] = ip >> 32;
+	input[0] = cycles ^ jiffies;
+	input[1] = irq;
+	if (regs) {
+		__u64 ip = instruction_pointer(regs);
+		input[2] = ip;
+		input[3] = ip >> 32;
+	}
 
-	fast_mix(fast_pool, input);
+	fast_mix(fast_pool, input, sizeof(input));
 
-	if ((fast_pool->count & 63) && !time_after(now, fast_pool->last + HZ))
+	if ((fast_pool->count & 1023) &&
+	    !time_after(now, fast_pool->last + HZ))
 		return;
 
 	fast_pool->last = now;
@@ -838,7 +838,7 @@ static void xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
 	__u32	tmp[OUTPUT_POOL_WORDS];
 
 	if (r->pull && r->entropy_count < nbytes * 8 &&
-	    r->entropy_count < r->poolinfo->poolbits) {
+	    r->entropy_count < r->poolinfo->POOLBITS) {
 		/* If we're limited, always leave two wakeup worth's BITS */
 		int rsvd = r->limit ? 0 : random_read_wakeup_thresh/4;
 		int bytes = nbytes;
@@ -849,7 +849,7 @@ static void xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
 		bytes = min_t(int, bytes, sizeof(tmp));
 
 		DEBUG_ENT("going to reseed %s with %d bits "
-			  "(%zu of %d requested)\n",
+			  "(%d of %d requested)\n",
 			  r->name, bytes * 8, nbytes * 8, r->entropy_count);
 
 		bytes = extract_entropy(r->pull, tmp, bytes,
@@ -860,9 +860,17 @@ static void xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
 }
 
 /*
- * This function decides how many bytes to actually take from the
- * given pool, and also debits the entropy count accordingly.
+ * These functions extracts randomness from the "entropy pool", and
+ * returns it in a buffer.
+ *
+ * The min parameter specifies the minimum amount we can pull before
+ * failing to avoid races that defeat catastrophic reseeding while the
+ * reserved parameter indicates how much entropy we must leave in the
+ * pool after each pull to avoid starving other readers.
+ *
+ * Note: extract_entropy() assumes that .poolwords is a multiple of 16 words.
  */
+
 static size_t account(struct entropy_store *r, size_t nbytes, int min,
 		      int reserved)
 {
@@ -871,8 +879,8 @@ static size_t account(struct entropy_store *r, size_t nbytes, int min,
 	/* Hold lock while accounting */
 	spin_lock_irqsave(&r->lock, flags);
 
-	BUG_ON(r->entropy_count > r->poolinfo->poolbits);
-	DEBUG_ENT("trying to extract %zu bits from %s\n",
+	BUG_ON(r->entropy_count > r->poolinfo->POOLBITS);
+	DEBUG_ENT("trying to extract %d bits from %s\n",
 		  nbytes * 8, r->name);
 
 	/* Can we pull enough? */
@@ -902,7 +910,7 @@ retry:
 		}
 	}
 
-	DEBUG_ENT("debiting %zu entropy credits from %s%s\n",
+	DEBUG_ENT("debiting %d entropy credits from %s%s\n",
 		  nbytes * 8, r->name, r->limit ? "" : " (unlimited)");
 
 	spin_unlock_irqrestore(&r->lock, flags);
@@ -910,12 +918,6 @@ retry:
 	return nbytes;
 }
 
-/*
- * This function does the actual extraction for extract_entropy and
- * extract_entropy_user.
- *
- * Note: we assume that .poolwords is a multiple of 16 words.
- */
 static void extract_buf(struct entropy_store *r, __u8 *out)
 {
 	int i;
@@ -977,24 +979,11 @@ static void extract_buf(struct entropy_store *r, __u8 *out)
 	memzero_explicit(&hash, sizeof(hash));
 }
 
-/*
- * This function extracts randomness from the "entropy pool", and
- * returns it in a buffer.
- *
- * The min parameter specifies the minimum amount we can pull before
- * failing to avoid races that defeat catastrophic reseeding while the
- * reserved parameter indicates how much entropy we must leave in the
- * pool after each pull to avoid starving other readers.
- */
 static ssize_t extract_entropy(struct entropy_store *r, void *buf,
 				 size_t nbytes, int min, int reserved)
 {
 	ssize_t ret = 0, i;
 	__u8 tmp[EXTRACT_SIZE];
-
-	/* if last_data isn't primed, we need EXTRACT_SIZE extra bytes */
-	if (fips_enabled && !r->last_data_init)
-		nbytes += EXTRACT_SIZE;
 
 	trace_extract_entropy(r->name, nbytes, r->entropy_count, _RET_IP_);
 	xfer_secondary_pool(r, nbytes);
@@ -1005,17 +994,6 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
 
 		if (fips_enabled) {
 			unsigned long flags;
-
-
-			/* prime last_data value if need be, per fips 140-2 */
-			if (!r->last_data_init) {
-				spin_lock_irqsave(&r->lock, flags);
-				memcpy(r->last_data, tmp, EXTRACT_SIZE);
-				r->last_data_init = true;
-				nbytes -= EXTRACT_SIZE;
-				spin_unlock_irqrestore(&r->lock, flags);
-				extract_buf(r, tmp);
-			}
 
 			spin_lock_irqsave(&r->lock, flags);
 			if (!memcmp(tmp, r->last_data, EXTRACT_SIZE))
@@ -1036,10 +1014,6 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
 	return ret;
 }
 
-/*
- * This function extracts randomness from the "entropy pool", and
- * returns it in a userspace buffer.
- */
 static ssize_t extract_entropy_user(struct entropy_store *r, void __user *buf,
 				    size_t nbytes)
 {
@@ -1081,9 +1055,8 @@ static ssize_t extract_entropy_user(struct entropy_store *r, void __user *buf,
 /*
  * This function is the exported kernel interface.  It returns some
  * number of good random numbers, suitable for key generation, seeding
- * TCP sequence numbers, etc.  It does not rely on the hardware random
- * number generator.  For random bytes direct from the hardware RNG
- * (when available), use get_random_bytes_arch().
+ * TCP sequence numbers, etc.  It does not use the hw random number
+ * generator, if available; use get_random_bytes_arch() for that.
  */
 void get_random_bytes(void *buf, int nbytes)
 {
@@ -1141,9 +1114,8 @@ static void init_std_data(struct entropy_store *r)
 
 	r->entropy_count = 0;
 	r->entropy_total = 0;
-	r->last_data_init = false;
 	mix_pool_bytes(r, &now, sizeof(now), NULL);
-	for (i = r->poolinfo->poolbytes; i > 0; i -= sizeof(rv)) {
+	for (i = r->poolinfo->POOLBYTES; i > 0; i -= sizeof(rv)) {
 		if (!arch_get_random_long(&rv))
 			break;
 		mix_pool_bytes(r, &rv, sizeof(rv), NULL);
@@ -1180,10 +1152,8 @@ void rand_initialize_disk(struct gendisk *disk)
 	 * source.
 	 */
 	state = kzalloc(sizeof(struct timer_rand_state), GFP_KERNEL);
-	if (state) {
-		state->last_time = INITIAL_JIFFIES;
+	if (state)
 		disk->random = state;
-	}
 }
 #endif
 
@@ -1200,16 +1170,11 @@ random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 		if (n > SEC_XFER_SIZE)
 			n = SEC_XFER_SIZE;
 
-		DEBUG_ENT("reading %zu bits\n", n*8);
+		DEBUG_ENT("reading %d bits\n", n*8);
 
 		n = extract_entropy_user(&blocking_pool, buf, n);
 
-		if (n < 0) {
-			retval = n;
-			break;
-		}
-
-		DEBUG_ENT("read got %zd bits (%zd still needed)\n",
+		DEBUG_ENT("read got %d bits (%d still needed)\n",
 			  n*8, (nbytes-n)*8);
 
 		if (n == 0) {
@@ -1234,6 +1199,10 @@ random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 			continue;
 		}
 
+		if (n < 0) {
+			retval = n;
+			break;
+		}
 		count += n;
 		buf += n;
 		nbytes -= n;
@@ -1407,18 +1376,18 @@ EXPORT_SYMBOL(generate_random_uuid);
 #include <linux/sysctl.h>
 
 static int min_read_thresh = 8, min_write_thresh;
-static int max_read_thresh = OUTPUT_POOL_WORDS * 32;
+static int max_read_thresh = INPUT_POOL_WORDS * 32;
 static int max_write_thresh = INPUT_POOL_WORDS * 32;
 static char sysctl_bootid[16];
 
 /*
- * This function is used to return both the bootid UUID, and random
+ * These functions is used to return both the bootid UUID, and random
  * UUID.  The difference is in whether table->data is NULL; if it is,
  * then a new UUID is generated and returned to the user.
  *
- * If the user accesses this via the proc interface, the UUID will be
- * returned as an ASCII string in the standard UUID format; if via the
- * sysctl system call, as 16 bytes of binary data.
+ * If the user accesses this via the proc interface, it will be returned
+ * as an ASCII string in the standard UUID format.  If accesses via the
+ * sysctl system call, it is returned as 16 bytes of binary data.
  */
 static int proc_do_uuid(ctl_table *table, int write,
 			void __user *buffer, size_t *lenp, loff_t *ppos)
@@ -1448,7 +1417,6 @@ static int proc_do_uuid(ctl_table *table, int write,
 }
 
 static int sysctl_poolsize = INPUT_POOL_WORDS * 32;
-extern ctl_table random_table[];
 ctl_table random_table[] = {
 	{
 		.procname	= "poolsize",
@@ -1513,7 +1481,7 @@ int random_int_secret_init(void)
  * value is not cryptographically secure but for several uses the cost of
  * depleting entropy is too high
  */
-static DEFINE_PER_CPU(__u32 [MD5_DIGEST_WORDS], get_random_int_hash);
+DEFINE_PER_CPU(__u32 [MD5_DIGEST_WORDS], get_random_int_hash);
 unsigned int get_random_int(void)
 {
 	__u32 *hash;
@@ -1531,28 +1499,6 @@ unsigned int get_random_int(void)
 
 	return ret;
 }
-
-/*
- * Same as get_random_int(), but returns unsigned long.
- */
-unsigned long get_random_long(void)
-{
-	__u32 *hash;
-	unsigned long ret;
-
-	if (arch_get_random_long(&ret))
-		return ret;
-
-	hash = get_cpu_var(get_random_int_hash);
-
-	hash[0] += current->pid + jiffies + get_cycles();
-	md5_transform(hash, random_int_secret);
-	ret = *(unsigned long *)hash;
-	put_cpu_var(get_random_int_hash);
-
-	return ret;
-}
-EXPORT_SYMBOL(get_random_long);
 
 /*
  * randomize_range() returns a start address such that
