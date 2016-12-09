@@ -369,7 +369,7 @@ static int cpu_boost_init(void)
 	struct cpu_sync *s;
 
 	cpu_boost_wq = alloc_workqueue("touch_boost_wq", WQ_HIGHPRI | 
-			WQ_FREEZABLE | 
+			WQ_MEM_RECLAIM | 
 			WQ_UNBOUND | 
 			__WQ_ORDERED, 0);
 	if (!cpu_boost_wq)
