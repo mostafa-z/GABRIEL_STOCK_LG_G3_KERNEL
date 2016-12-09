@@ -51,7 +51,11 @@ static unsigned int min_sampling_rate;
 
 #define LATENCY_MULTIPLIER			(1000)
 #define MIN_LATENCY_MULTIPLIER			(100)
+#ifdef CONFIG_ZEN_INTERACTIVE
+#define DEF_SAMPLING_DOWN_FACTOR		(10)
+#else
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
+#endif
 #define MAX_SAMPLING_DOWN_FACTOR		(10)
 #define TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
 
