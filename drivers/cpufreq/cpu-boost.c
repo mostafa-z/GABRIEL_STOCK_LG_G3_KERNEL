@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/time.h>
+#include <linux/msm_thermal.h>
 #ifdef CONFIG_STATE_NOTIFIER
 #include <linux/state_notifier.h>
 #endif
@@ -189,6 +190,12 @@ static void do_input_boost(struct work_struct *work)
 {
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
+
+	if (cpu_temp_for_touch_boost > 70) {
+		pr_debug("Input boost skipped! cpu temp is %d\n",
+			cpu_temp_for_touch_boost);
+		return;
+	}
 
 	cancel_delayed_work_sync(&input_boost_rem);
 
