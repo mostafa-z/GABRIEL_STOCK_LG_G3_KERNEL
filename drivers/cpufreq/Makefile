@@ -1,5 +1,9 @@
 # CPUfreq core
+ifdef CONFIG_ALUCARD_TOUCHSCREEN_BOOST
+obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o
+else
 obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o cpu-boost.o
+endif
 # CPUfreq stats
 obj-$(CONFIG_CPU_FREQ_STAT)             += cpufreq_stats.o
 
