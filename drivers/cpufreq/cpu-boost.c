@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  * Copyright (c) 2013-2016, Pranav Vashi <neobuddy89@gmail.com>
+ * Merge Alucard & Dorimanx Touch-boost driver 2016
+ * Mostafa Zarghami<mostafazarghami@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,9 +18,13 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/notifier.h>
+#include <mach/cpufreq.h>
 #include <linux/cpufreq.h>
 #include <linux/cpu.h>
 #include <linux/sched.h>
+#include <linux/jiffies.h>
+#include <linux/smpboot.h>
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
 #include <linux/input.h>
@@ -28,6 +34,18 @@
 #include <linux/state_notifier.h>
 #endif
 
+/*
+ * debug = 1 will print all
+ */
+static unsigned int debug = 0;
+module_param_named(debug_mask, debug, uint, 0644);
+
+#define dprintk(msg...)		\
+do {				\
+	if (debug)		\
+		pr_info(msg);	\
+} while (0)
+
 struct cpu_sync {
 	int cpu;
 	unsigned int input_boost_min;
@@ -36,7 +54,7 @@ struct cpu_sync {
 
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
 static struct workqueue_struct *cpu_boost_wq;
-
+static struct delayed_work input_boost_rem;
 static struct work_struct input_boost_work;
 
 #ifdef CONFIG_STATE_NOTIFIER
@@ -46,8 +64,14 @@ static struct notifier_block notif;
 static unsigned int input_boost_enabled = 1;
 module_param(input_boost_enabled, uint, 0644);
 
+static unsigned int input_boost_freq = 960000;
+module_param(input_boost_freq, uint, 0644);
+
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
+
+static unsigned int nr_boost_cpus = 2;
+module_param(nr_boost_cpus, uint, 0644);
 
 static bool hotplug_boost;
 module_param(hotplug_boost, bool, 0644);
@@ -55,69 +79,24 @@ module_param(hotplug_boost, bool, 0644);
 static bool wakeup_boost;
 module_param(wakeup_boost, bool, 0644);
 
-static struct delayed_work input_boost_rem;
 static u64 last_input_time;
 
 static unsigned int min_input_interval = 150;
 module_param(min_input_interval, uint, 0644);
 
-static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
-{
-	int i, ntokens = 0;
-	unsigned int val, cpu;
-	const char *cp = buf;
-
-	while ((cp = strpbrk(cp + 1, " :")))
-		ntokens++;
-
-	/* single number: apply to all CPUs */
-	if (!ntokens) {
-		if (sscanf(buf, "%u\n", &val) != 1)
-			return -EINVAL;
-		for_each_possible_cpu(i)
-			per_cpu(sync_info, i).input_boost_freq = val;
-		goto out;
-	}
-
-	/* CPU:value pair */
-	if (!(ntokens % 2))
-		return -EINVAL;
-
-	cp = buf;
-	for (i = 0; i < ntokens; i += 2) {
-		if (sscanf(cp, "%u:%u", &cpu, &val) != 2)
-			return -EINVAL;
-		if (cpu > num_possible_cpus())
-			return -EINVAL;
-
-		per_cpu(sync_info, cpu).input_boost_freq = val;
-		cp = strchr(cp, ' ');
-		cp++;
-	}
-
-out:
-	return 0;
-}
-
-static int get_input_boost_freq(char *buf, const struct kernel_param *kp)
-{
-	int cnt = 0, cpu;
-	struct cpu_sync *s;
-
-	for_each_possible_cpu(cpu) {
-		s = &per_cpu(sync_info, cpu);
-		cnt += snprintf(buf + cnt, PAGE_SIZE - cnt,
-				"%d:%u ", cpu, s->input_boost_freq);
-	}
-	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
-	return cnt;
-}
-
-static const struct kernel_param_ops param_ops_input_boost_freq = {
-	.set = set_input_boost_freq,
-	.get = get_input_boost_freq,
+static struct min_cpu_limit {
+	uint32_t user_min_freq_lock[4];
+	uint32_t user_boost_freq_lock[4];
+} limit = {
+	.user_min_freq_lock[0] = 0,
+	.user_min_freq_lock[1] = 0,
+	.user_min_freq_lock[2] = 0,
+	.user_min_freq_lock[3] = 0,
+	.user_boost_freq_lock[0] = 0,
+	.user_boost_freq_lock[1] = 0,
+	.user_boost_freq_lock[2] = 0,
+	.user_boost_freq_lock[3] = 0,
 };
-module_param_cb(input_boost_freq, &param_ops_input_boost_freq, NULL, 0644);
 
 /*
  * The CPUFREQ_ADJUST notifier is used to override the current policy min to
@@ -141,13 +120,13 @@ static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
 
 	min = min(ib_min, policy->max);
 
-	pr_debug("CPU%u policy min before boost: %u kHz\n",
+	dprintk("CPU%u policy min before boost: %u kHz\n",
 		 cpu, policy->min);
-	pr_debug("CPU%u boost min: %u kHz\n", cpu, min);
+	dprintk("CPU%u boost min: %u kHz\n", cpu, min);
 
 	cpufreq_verify_within_limits(policy, min, UINT_MAX);
 
-	pr_debug("CPU%u policy min after boost: %u kHz\n",
+	dprintk("CPU%u policy min after boost: %u kHz\n",
 		 cpu, policy->min);
 
 	return NOTIFY_OK;
@@ -157,57 +136,66 @@ static struct notifier_block boost_adjust_nb = {
 	.notifier_call = boost_adjust_notify,
 };
 
-static void update_policy_online(void)
-{
-	unsigned int i;
-
-	/* Re-evaluate policy to trigger adjust notifier for online CPUs */
-	get_online_cpus();
-	for_each_online_cpu(i) {
-		pr_debug("Updating policy for CPU%d\n", i);
-		cpufreq_update_policy(i);
-	}
-	put_online_cpus();
-}
-
 static void do_input_boost_rem(struct work_struct *work)
 {
-	unsigned int i;
-	struct cpu_sync *i_sync_info;
+	unsigned int cpu;
 
-	/* Reset the input_boost_min for all CPUs in the system */
-	pr_debug("Resetting input boost min for all CPUs\n");
-	for_each_possible_cpu(i) {
-		i_sync_info = &per_cpu(sync_info, i);
-		i_sync_info->input_boost_min = 0;
+	for_each_possible_cpu(cpu) {
+		if (limit.user_boost_freq_lock[cpu] > 0) {
+			dprintk("Removing input boost for CPU%u\n", cpu);
+			set_cpu_boost_min_lock(cpu,
+					limit.user_min_freq_lock[cpu]);
+			limit.user_boost_freq_lock[cpu] = 0;
+		}
 	}
-
-	/* Update policies for all online CPUs */
-	update_policy_online();
 }
 
 static void do_input_boost(struct work_struct *work)
 {
-	unsigned int i;
-	struct cpu_sync *i_sync_info;
+	unsigned int cpu;
+	unsigned nr_cpus = nr_boost_cpus;
 
 	if (cpu_temp_for_touch_boost > 70) {
-		pr_debug("Input boost skipped! cpu temp is %d\n",
+		dprintk("Input boost skipped! cpu temp is %d\n",
 			cpu_temp_for_touch_boost);
 		return;
 	}
 
 	cancel_delayed_work_sync(&input_boost_rem);
 
-	/* Set the input_boost_min for all CPUs in the system */
-	pr_debug("Setting input boost min for all CPUs\n");
-	for_each_possible_cpu(i) {
-		i_sync_info = &per_cpu(sync_info, i);
-		i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
+	if (nr_cpus <= 0)
+		nr_cpus = 1;
+	else if (nr_cpus > NR_CPUS)
+		nr_cpus = NR_CPUS;
+
+	if (input_boost_freq != 0) {
+		if (input_boost_freq > 1958400)
+			input_boost_freq = 1958400;
+		if (input_boost_freq < 300000)
+			input_boost_freq = 960000;
 	}
 
-	/* Update policies for all online CPUs */
-	update_policy_online();
+	for (cpu = 0; cpu < nr_cpus; cpu++) {
+		struct cpufreq_policy policy;
+		unsigned int cur = 0;
+
+		/* Save user current min & boost lock */
+		limit.user_min_freq_lock[cpu] = get_cpu_min_lock(cpu);
+		limit.user_boost_freq_lock[cpu] = input_boost_freq;
+
+		dprintk("Input boost for CPU%u\n", cpu);
+		set_cpu_boost_min_lock(cpu, limit.user_boost_freq_lock[cpu]);
+
+		if (cpu_online(cpu)) {
+			cur = cpufreq_quick_get(cpu);
+			if (cur < limit.user_boost_freq_lock[cpu] && cur > 0) {
+				policy.cpu = cpu;
+				cpufreq_driver_target(&policy,
+					limit.user_boost_freq_lock[cpu],
+							CPUFREQ_RELATION_L);
+			}
+		}
+	}
 
 	queue_delayed_work_on(BOOT_CPU, cpu_boost_wq,
 			&input_boost_rem,
@@ -218,23 +206,24 @@ static void cpuboost_input_event(struct input_handle *handle,
 		unsigned int type, unsigned int code, int value)
 {
 	u64 now;
-	unsigned int min_interval;
 
 #ifdef CONFIG_STATE_NOTIFIER
 	if (state_suspended)
 		return;
 #endif
 
-	if (!input_boost_enabled || work_pending(&input_boost_work))
+	if (!input_boost_enabled)
 		return;
 
 	now = ktime_to_us(ktime_get());
-	min_interval = max(min_input_interval, input_boost_ms);
-
-	if (now - last_input_time < min_interval * USEC_PER_MSEC)
+	if ((now - last_input_time) < (min_input_interval * USEC_PER_MSEC))
 		return;
 
-	pr_debug("Input boost for input event.\n");
+	if (work_pending(&input_boost_work))
+		return;
+
+	dprintk("Input boost for input event.\n");
+
 	queue_work_on(BOOT_CPU, cpu_boost_wq, &input_boost_work);
 	last_input_time = ktime_to_us(ktime_get());
 }
@@ -323,7 +312,7 @@ static int cpuboost_cpu_callback(struct notifier_block *cpu_nb,
 			if (!hotplug_boost || !input_boost_enabled ||
 			     work_pending(&input_boost_work))
 				break;
-			pr_debug("Hotplug boost for CPU%lu\n", (long)hcpu);
+			dprintk("Hotplug boost for CPU%lu\n", (long)hcpu);
 			queue_work(cpu_boost_wq, &input_boost_work);
 			last_input_time = ktime_to_us(ktime_get());
 			break;
@@ -343,7 +332,7 @@ static void __wakeup_boost(void)
 	if (!wakeup_boost || !input_boost_enabled ||
 	     work_pending(&input_boost_work))
 		return;
-	pr_debug("Wakeup boost for display on event.\n");
+	dprintk("Wakeup boost for display on event.\n");
 	queue_work(cpu_boost_wq, &input_boost_work);
 	last_input_time = ktime_to_us(ktime_get());
 }
