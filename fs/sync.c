@@ -268,6 +268,7 @@ static int do_fsync(unsigned int fd, int datasync)
 {
 	struct file *file;
 	int ret = -EBADF;
+	int fput_needed;
 
 #ifdef CONFIG_ASYNC_FSYNC
 	struct fsync_work *fwork;
