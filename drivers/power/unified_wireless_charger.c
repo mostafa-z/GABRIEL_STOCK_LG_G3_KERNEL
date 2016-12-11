@@ -271,7 +271,7 @@ static void wireless_align_proc(struct unified_wlc_chip *chip,
 		/* start work queue for alignment */
 		wireless_align_start(chip);
 		if (likely(delayed_work_pending(&chip->wireless_align_work))) {
-			flush_delayed_work_sync(&chip->wireless_align_work);
+			flush_delayed_work(&chip->wireless_align_work);
 		}
 		schedule_delayed_work(&chip->wireless_align_work,
 					msecs_to_jiffies(WLC_ALIGN_INTERVAL));
