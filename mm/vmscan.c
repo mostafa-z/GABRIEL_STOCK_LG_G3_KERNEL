@@ -1390,7 +1390,7 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
 			if (unlikely(PageCompound(page))) {
 				spin_unlock_irq(&zone->lru_lock);
 				(*get_compound_page_dtor(page))(page);
-				spin_lock_irq(&zone-hrink_inactive_list() is a helper for shrink_zone().  It return>lru_lock);
+				spin_lock_irq(&zone->lru_lock);
 			} else
 				list_add(&page->lru, &pages_to_free);
 		}
@@ -1844,18 +1844,6 @@ static void get_scan_count(struct lruvec *lruvec, struct scan_control *sc,
 			denominator = 1;
 			goto out;
 		}
-	}
-
-	/*
-	 * There is enough inactive page cache, do not reclaim
-	 * anything from the anonymous working set right now.
-	 */
-	if (!IS_ENABLED(CONFIG_BALANCE_ANON_FILE_RECLAIM) &&
-			!inactive_file_is_low(mz)) {
-		fraction[0] = 0;
-		fraction[1] = 1;
-		denominator = 1;
-		goto out;
 	}
 
 	/*
@@ -3286,22 +3274,6 @@ static int __devinit cpu_callback(struct notifier_block *nfb,
 		}
 	}
 	return NOTIFY_OK;
-}
-
-static int set_kswapd_cpu_mask(pg_data_t *pgdat)
-{
-	int ret = 0;
-	cpumask_t tmask;
-
-	if (!kswapd_cpu_mask)
-		return 0;
-
-	cpus_clear(tmask);
-	ret = cpumask_parse(kswapd_cpu_mask, &tmask);
-	if (ret)
-		return ret;
-
-	return set_cpus_allowed_ptr(pgdat->kswapd, &tmask);
 }
 
 /*
