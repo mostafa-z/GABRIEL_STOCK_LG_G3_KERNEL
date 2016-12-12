@@ -392,6 +392,8 @@ struct user_namespace;
 
 extern int sysctl_max_map_count;
 
+#include <linux/aio.h>
+
 #ifdef CONFIG_MMU
 extern void arch_pick_mmap_layout(struct mm_struct *mm);
 extern unsigned long

@@ -36,7 +36,6 @@
 #include "xfs_ioctl.h"
 #include "xfs_trace.h"
 
-#include <linux/aio.h>
 #include <linux/dcache.h>
 #include <linux/falloc.h>
 

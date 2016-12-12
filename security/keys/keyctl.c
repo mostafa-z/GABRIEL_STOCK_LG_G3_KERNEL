@@ -22,7 +22,6 @@
 #include <linux/err.h>
 #include <linux/vmalloc.h>
 #include <linux/security.h>
-#include <linux/uio.h>
 #include <asm/uaccess.h>
 #include "internal.h"
 

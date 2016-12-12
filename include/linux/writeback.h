@@ -5,7 +5,6 @@
 #define WRITEBACK_H
 
 #include <linux/sched.h>
-#include <linux/workqueue.h>
 #include <linux/fs.h>
 
 DECLARE_PER_CPU(int, dirty_throttle_leaks);

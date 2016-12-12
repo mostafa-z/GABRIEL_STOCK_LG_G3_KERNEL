@@ -38,7 +38,6 @@
 #include <linux/slab.h>
 #include <linux/crc-itu-t.h>
 #include <linux/mpage.h>
-#include <linux/aio.h>
 
 #include "udf_i.h"
 #include "udf_sb.h"

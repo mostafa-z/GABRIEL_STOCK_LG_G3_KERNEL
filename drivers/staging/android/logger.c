@@ -28,7 +28,6 @@
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/vmalloc.h>
-#include <linux/aio.h>
 #include "logger.h"
 #include <linux/powersuspend.h>
 

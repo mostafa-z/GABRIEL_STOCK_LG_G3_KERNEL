@@ -27,7 +27,6 @@
 #include <linux/writeback.h>
 #include <linux/mpage.h>
 #include <linux/namei.h>
-#include <linux/aio.h>
 #include "ext3.h"
 #include "xattr.h"
 #include "acl.h"
