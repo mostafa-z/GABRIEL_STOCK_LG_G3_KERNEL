@@ -43,6 +43,7 @@
 
 #include <linux/kthread.h>
 #include <linux/freezer.h>
+#include <linux/ratelimit.h> 
 
 #include "ext4.h"
 #include "ext4_extents.h"	/* Needed for trace points definition */
