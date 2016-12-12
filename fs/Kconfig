@@ -317,10 +317,4 @@ config DYNAMIC_FSYNC
 	bool "asynchronous fsync"
  	default y
 
-config AIO_OPTIMIZATION
-	bool "AIO kernel optimization patches"
-	default y
-	help
-	  An experimental AIO FS kernel optimization
-
 endmenu
