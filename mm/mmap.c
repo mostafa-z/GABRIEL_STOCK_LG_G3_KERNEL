@@ -1327,7 +1327,7 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
 	unsigned long ret;
 	struct mm_struct *mm = current->mm;
 
-	down_w#define validate_mm(mm) do { } while (rite(&mm->mmap_sem);
+	down_write(&mm->mmap_sem);
 	ret = do_mmap(file, addr, len, prot, flag, offset);
 	up_write(&mm->mmap_sem);
 	return ret;

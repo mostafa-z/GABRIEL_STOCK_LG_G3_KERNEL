@@ -1636,7 +1636,6 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
 	 */
 	if (nr_writeback && nr_writeback == nr_taken)
 		zone_set_flag(zone, ZONE_WRITEBACK);
-	}
 
 	/*
 	 * memcg will stall in page writeback so only consider forcibly
