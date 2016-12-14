@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/time.h>
+#include <linux/fsync.h>
 #include <linux/msm_thermal.h>
 #ifdef CONFIG_STATE_NOTIFIER
 #include <linux/state_notifier.h>
@@ -139,6 +140,7 @@ static struct notifier_block boost_adjust_nb = {
 static void do_input_boost_rem(struct work_struct *work)
 {
 	unsigned int cpu;
+	set_fsync(true);
 
 	for_each_possible_cpu(cpu) {
 		if (limit.user_boost_freq_lock[cpu] > 0) {
@@ -154,6 +156,7 @@ static void do_input_boost(struct work_struct *work)
 {
 	unsigned int cpu;
 	unsigned nr_cpus = nr_boost_cpus;
+	set_fsync(false);
 
 	if (cpu_temp_for_touch_boost > 70) {
 		dprintk("Input boost skipped! cpu temp is %d\n",
