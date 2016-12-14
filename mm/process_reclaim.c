@@ -30,12 +30,12 @@ static void swap_fn(struct work_struct *work);
 DECLARE_WORK(swap_work, swap_fn);
 
 /* User knob to enable/disable process reclaim feature */
-static int enable_process_reclaim = 1;
+static int enable_process_reclaim;
 module_param_named(enable_process_reclaim, enable_process_reclaim, int,
 	S_IRUGO | S_IWUSR);
 
 /* The max number of pages tried to be reclaimed in a single run */
-int per_swap_size = SWAP_CLUSTER_MAX * 32;
+int per_swap_size = SWAP_CLUSTER_MAX * 16;
 module_param_named(per_swap_size, per_swap_size, int, S_IRUGO | S_IWUSR);
 
 int reclaim_avg_efficiency;
@@ -44,11 +44,9 @@ module_param_named(reclaim_avg_efficiency, reclaim_avg_efficiency,
 
 /* The vmpressure region where process reclaim operates */
 static unsigned long pressure_min = 50;
-static unsigned long pressure_max = 85;
-static unsigned long process_reclaim_pressure = 0;
+static unsigned long pressure_max = 80;
 module_param_named(pressure_min, pressure_min, ulong, S_IRUGO | S_IWUSR);
 module_param_named(pressure_max, pressure_max, ulong, S_IRUGO | S_IWUSR);
-module_param_named(process_reclaim_pressure, process_reclaim_pressure, ulong, 0444);
 
 /*
  * Scheduling process reclaim workqueue unecessarily
@@ -203,7 +201,7 @@ static void swap_fn(struct work_struct *work)
 
 		if (efficiency < swap_opt_eff) {
 			if (++monitor_eff == swap_eff_win) {
-				atomic_set(&skip_reclaim, swap_eff_win);
+				atomic_set(&skip_reclaim, swap_eff_win + 1);
 				monitor_eff = 0;
 			}
 		} else {
@@ -221,18 +219,13 @@ static int vmpressure_notifier(struct notifier_block *nb,
 {
 	unsigned long pressure = action;
 
-	if (!enable_process_reclaim) {
-		if (process_reclaim_pressure > 0)
-			process_reclaim_pressure = 0;
+	if (!enable_process_reclaim)
 		return 0;
-	}
-
-	process_reclaim_pressure = action;
 
 	if (!current_is_kswapd())
 		return 0;
 
-	if (0 <= atomic_dec_if_positive(&skip_reclaim))
+	if (!atomic_dec_and_test(&skip_reclaim))
 		return 0;
 
 	if ((pressure >= pressure_min) && (pressure < pressure_max))
