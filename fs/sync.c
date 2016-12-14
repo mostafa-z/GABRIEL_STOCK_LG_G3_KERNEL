@@ -16,10 +16,16 @@
 #include <linux/pagemap.h>
 #include <linux/quotaops.h>
 #include <linux/backing-dev.h>
+#include <linux/fsync.h>
 #include "internal.h"
 
 bool fsync_enabled = true;
-module_param(fsync_enabled, bool, 0755);
+module_param(fsync_enabled, bool, 0644);
+
+void set_fsync(bool enable)
+{
+        fsync_enabled = enable;
+}
 
 #ifdef CONFIG_DYNAMIC_FSYNC
 extern bool power_suspend_active;
