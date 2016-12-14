@@ -21,10 +21,13 @@
 
 bool fsync_enabled = true;
 module_param(fsync_enabled, bool, 0644);
+bool fsync_enabled_on_input_boost = true;
+module_param(fsync_enabled_on_input_boost, bool, 0644);
 
 void set_fsync(bool enable)
 {
-        fsync_enabled = enable;
+	if (!fsync_enabled_on_input_boost)
+        	fsync_enabled = enable;
 }
 
 #ifdef CONFIG_DYNAMIC_FSYNC
