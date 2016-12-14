@@ -1013,7 +1013,7 @@ static void selinux_write_opts(struct seq_file *m,
 		seq_puts(m, prefix);
 		if (has_comma)
 			seq_putc(m, '\"');
-		seq_escape(m, opts->mnt_opts[i], "\"\n\\");
+		seq_puts(m, opts->mnt_opts[i]);
 		if (has_comma)
 			seq_putc(m, '\"');
 	}
@@ -1886,7 +1886,7 @@ static int selinux_binder_transfer_file(struct task_struct *from, struct task_st
 {
 	u32 sid = task_sid(to);
 	struct file_security_struct *fsec = file->f_security;
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file->f_path.dentry->d_inode;
 	struct inode_security_struct *isec = inode->i_security;
 	struct common_audit_data ad;
 	struct selinux_audit_data sad = {0,};
@@ -2081,7 +2081,7 @@ static int selinux_bprm_set_creds(struct linux_binprm *bprm)
 	struct inode_security_struct *isec;
 	struct common_audit_data ad;
 	struct selinux_audit_data sad = {0,};
-	struct inode *inode = file_inode(bprm->file);
+	struct inode *inode = bprm->file->f_path.dentry->d_inode;
 	int rc;
 
 	rc = cap_bprm_set_creds(bprm);
@@ -2584,9 +2584,9 @@ static int selinux_sb_statfs(struct dentry *dentry)
 	return superblock_has_perm(cred, dentry->d_sb, FILESYSTEM__GETATTR, &ad);
 }
 
-static int selinux_mount(const char *dev_name,
+static int selinux_mount(char *dev_name,
 			 struct path *path,
-			 const char *type,
+			 char *type,
 			 unsigned long flags,
 			 void *data)
 {
@@ -3090,7 +3090,7 @@ static void selinux_inode_getsecid(const struct inode *inode, u32 *secid)
 static int selinux_revalidate_file_permission(struct file *file, int mask)
 {
 	const struct cred *cred = current_cred();
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file->f_path.dentry->d_inode;
 
 	/* file_mask_to_av won't add FILE__WRITE if MAY_APPEND is set */
 	if ((file->f_flags & O_APPEND) && (mask & MAY_WRITE))
@@ -3102,7 +3102,7 @@ static int selinux_revalidate_file_permission(struct file *file, int mask)
 
 static int selinux_file_permission(struct file *file, int mask)
 {
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file->f_path.dentry->d_inode;
 	struct file_security_struct *fsec = file->f_security;
 	struct inode_security_struct *isec = inode->i_security;
 	u32 sid = current_sid();
@@ -3143,7 +3143,7 @@ int ioctl_has_perm(const struct cred *cred, struct file *file,
 {
 	struct common_audit_data ad;
 	struct file_security_struct *fsec = file->f_security;
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file->f_path.dentry->d_inode;
 	struct inode_security_struct *isec = inode->i_security;
 	struct lsm_ioctlop_audit ioctl;
 	u32 ssid = cred_sid(cred);
@@ -3341,7 +3341,7 @@ static int selinux_file_fcntl(struct file *file, unsigned int cmd,
 
 	switch (cmd) {
 	case F_SETFL:
-		if (!file->f_path.dentry || !file_inode(file)) {
+		if (!file->f_path.dentry || !file->f_path.dentry->d_inode) {
 			err = -EINVAL;
 			break;
 		}
@@ -3368,7 +3368,7 @@ static int selinux_file_fcntl(struct file *file, unsigned int cmd,
 	case F_SETLK64:
 	case F_SETLKW64:
 #endif
-		if (!file->f_path.dentry || !file_inode(file)) {
+		if (!file->f_path.dentry || !file->f_path.dentry->d_inode) {
 			err = -EINVAL;
 			break;
 		}
