@@ -44,7 +44,6 @@
 #include <linux/oom.h>
 #include <linux/prefetch.h>
 #include <linux/debugfs.h>
-#include <linux/sched/rt.h>
 
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
@@ -144,12 +143,6 @@ int vm_swappiness = 60;
  * zones.
  */
 unsigned long vm_total_pages;
-
-#ifdef CONFIG_KSWAPD_CPU_AFFINITY_MASK
-char *kswapd_cpu_mask = CONFIG_KSWAPD_CPU_AFFINITY_MASK;
-#else
-char *kswapd_cpu_mask = NULL;
-#endif
 
 #ifdef CONFIG_KSWAPD_CPU_AFFINITY_MASK
 char *kswapd_cpu_mask = CONFIG_KSWAPD_CPU_AFFINITY_MASK;
@@ -2360,6 +2353,11 @@ static void shrink_zone(struct zone *zone, struct scan_control *sc)
 			}
 			memcg = mem_cgroup_iter(root, memcg, &reclaim);
 		} while (memcg);
+
+		vmpressure(sc->gfp_mask, sc->target_mem_cgroup,
+			   sc->nr_scanned - nr_scanned,
+			   sc->nr_reclaimed - nr_reclaimed);
+
 	} while (should_continue_reclaim(zone, sc->nr_reclaimed - nr_reclaimed,
 					 sc->nr_scanned - nr_scanned, sc));
 }
@@ -2594,7 +2592,6 @@ static unsigned long do_try_to_free_pages(struct zonelist *zonelist,
 						WB_REASON_TRY_TO_FREE_PAGES);
 			sc->may_writepage = 1;
 		}
-
 	} while (--sc->priority >= 0 && !aborted_reclaim);
 
 out:
