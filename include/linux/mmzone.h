@@ -87,13 +87,9 @@ bool is_cma_pageblock(struct page *page);
 
 extern int page_group_by_mobility_disabled;
 
-#define NR_MIGRATETYPE_BITS (PB_migrate_end - PB_migrate + 1)
-#define MIGRATETYPE_MASK ((1UL << NR_MIGRATETYPE_BITS) - 1)
-
 static inline int get_pageblock_migratetype(struct page *page)
 {
-	BUILD_BUG_ON(PB_migrate_end - PB_migrate != 2);
-	return get_pageblock_flags_mask(page, PB_migrate_end, MIGRATETYPE_MASK);
+	return get_pageblock_flags_group(page, PB_migrate, PB_migrate_end);
 }
 
 struct free_area {
