@@ -61,8 +61,15 @@ void compare_swap_oom_score_adj(short old_val, short new_val)
 	struct sighand_struct *sighand = current->sighand;
 
 	spin_lock_irq(&sighand->siglock);
-	if (current->signal->oom_score_adj == old_val)
+	if (current->signal->oom_score_adj == old_val) {
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+		delete_from_adj_tree(current);
+#endif
 		current->signal->oom_score_adj = new_val;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+		add_2_adj_tree(current);
+#endif
+	}
 	trace_oom_score_adj_update(current);
 	spin_unlock_irq(&sighand->siglock);
 }
@@ -81,8 +88,14 @@ short test_set_oom_score_adj(short new_val)
 	int old_val;
 
 	spin_lock_irq(&sighand->siglock);
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	delete_from_adj_tree(current);
+#endif
 	old_val = current->signal->oom_score_adj;
 	current->signal->oom_score_adj = new_val;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	add_2_adj_tree(current);
+#endif
 	trace_oom_score_adj_update(current);
 	spin_unlock_irq(&sighand->siglock);
 
@@ -204,7 +217,7 @@ unsigned long oom_badness(struct task_struct *p, struct mem_cgroup *memcg,
 	if (!p)
 		return 0;
 
-	adj = p->signal->oom_score_adj;
+	adj = (long)p->signal->oom_score_adj;
 	if (adj == OOM_SCORE_ADJ_MIN) {
 		task_unlock(p);
 		return 0;
@@ -398,7 +411,7 @@ void dump_tasks(const struct mem_cgroup *memcg, const nodemask_t *nodemask)
 	struct task_struct *p;
 	struct task_struct *task;
 
-	pr_info("[ pid ]   uid  tgid total_vm      rss cpu oom_adj oom_score_adj name\n");
+	pr_info("[ pid ]   uid  tgid total_vm      rss nr_ptes swapents oom_score_adj name\n");
 	rcu_read_lock();
 	for_each_process(p) {
 		if (oom_unkillable_task(p, memcg, nodemask))
@@ -414,10 +427,11 @@ void dump_tasks(const struct mem_cgroup *memcg, const nodemask_t *nodemask)
 			continue;
 		}
 
-		pr_info("[%5d] %5d %5d %8lu %8lu %3u     %3d         %5hd %s\n",
-			task->pid, task_uid(task), task->tgid,
-			task->mm->total_vm, get_mm_rss(task->mm),
-			task_cpu(task), task->signal->oom_adj,
+		pr_info("[%5d] %5d %5d %8lu %8lu %7lu %8lu         %5hd %s\n",
+			task->pid, from_kuid(&init_user_ns, task_uid(task)),
+			task->tgid, task->mm->total_vm, get_mm_rss(task->mm),
+			task->mm->nr_ptes,
+			get_mm_counter(task->mm, MM_SWAPENTS),
 			task->signal->oom_score_adj, task->comm);
 		task_unlock(task);
 	}
@@ -761,3 +775,4 @@ void pagefault_out_of_memory(void)
 		clear_zonelist_oom(zonelist, GFP_KERNEL);
 	}
 }
+
