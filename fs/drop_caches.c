@@ -60,11 +60,10 @@ int drop_caches_sysctl_handler(ctl_table *table, int write,
 	if (ret)
 		return ret;
 	if (write) {
+		static int stfu;
 
 		/* sync file system before cache clean. Dorimanx. */
 		sys_sync();
-
-		static int stfu;
 
 		if (sysctl_drop_caches & 1) {
 			iterate_supers(drop_pagecache_sb, NULL);
