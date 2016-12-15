@@ -1072,7 +1072,7 @@ static int reclaim_pte_range(pmd_t *pmd, unsigned long addr,
 	int isolated;
 	int reclaimed;
 
-	split_huge_page_pmd(addr, pmd);
+	split_huge_page_pmd(vma, addr, pmd);
 	if (pmd_trans_unstable(pmd) || !rp->nr_to_reclaim)
 		return 0;
 cont:
