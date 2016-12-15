@@ -83,12 +83,11 @@ static inline void uksm_cow_pte(struct vm_area_struct *vma, pte_t pte)
 
 static inline int uksm_flags_can_scan(unsigned long vm_flags)
 {
-#ifndef VM_SAO
-#define VM_SAO 0
-#endif
 	return !(vm_flags & (VM_PFNMAP | VM_IO  | VM_DONTEXPAND |
-			     VM_HUGETLB | VM_NONLINEAR | VM_MIXEDMAP |
-			     VM_SHARED  | VM_MAYSHARE | VM_GROWSUP | VM_GROWSDOWN | VM_SAO));
+				  VM_RESERVED  | VM_HUGETLB | VM_INSERTPAGE |
+				  VM_NONLINEAR | VM_MIXEDMAP | VM_SAO |
+				  VM_SHARED  | VM_MAYSHARE | VM_GROWSUP
+				  | VM_GROWSDOWN));
 }
 
 static inline void uksm_vm_flags_mod(unsigned long *vm_flags_p)
