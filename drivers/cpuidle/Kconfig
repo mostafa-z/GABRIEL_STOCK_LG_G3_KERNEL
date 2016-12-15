@@ -34,7 +34,7 @@ config CPU_IDLE_GOV_MENU
 config CPU_IDLE_GOV_NULL
 	bool "Null idle governor"
 	depends on CPU_IDLE
-	default y
+	default n
 	help
 	  Do not use - except with qct lpm idle driver which neglects governor input.
 
