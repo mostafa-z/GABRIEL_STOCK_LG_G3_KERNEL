@@ -885,11 +885,9 @@ again:			remove_next = 1 + (end > next->vm_end);
 		if (remove_next == 2) {
 			uksm_remove_vma(next);
 			goto again;
-		}
-		else if (next) {
+		} else if (next) {
 			vma_gap_update(next);
-		}
-		else {
+		} else {
 			mm->highest_vm_end = end;
 		}
 	} else {
@@ -2846,8 +2844,8 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
 			if (new_vma->vm_ops && new_vma->vm_ops->open)
 				new_vma->vm_ops->open(new_vma);
 			vma_link(mm, new_vma, prev, rb_link, rb_parent);
-			uksm_vma_add_new(new_vma);
 			*need_rmap_locks = false;
+			uksm_vma_add_new(new_vma);
 		}
 	}
 	return new_vma;

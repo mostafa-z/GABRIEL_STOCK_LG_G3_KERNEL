@@ -139,17 +139,8 @@ static int __init setup_uksm_zero_page(void)
 	return 0;
 }
 core_initcall(setup_uksm_zero_page);
-
-static inline int is_uksm_zero_pfn(unsigned long pfn)
-{
-	return pfn == uksm_zero_pfn;
-}
-#else
-static inline int is_uksm_zero_pfn(unsigned long pfn)
-{
-	return 0;
-}
 #endif
+
 
 /*
  * CONFIG_MMU architectures set up ZERO_PAGE in their paging_init()
