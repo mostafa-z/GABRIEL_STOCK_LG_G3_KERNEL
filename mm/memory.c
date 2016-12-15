@@ -1608,8 +1608,6 @@ split_fallthrough:
 		goto no_page;
 	if ((flags & FOLL_NUMA) && pte_numa(pte))
 		goto no_page;
-	if ((flags & FOLL_WRITE) && !pte_write(pte))
-		goto unlock;
 
 	page = vm_normal_page(vma, address, pte);
 	if ((flags & FOLL_WRITE) && !can_follow_write_pte(pte, page, flags)) {
