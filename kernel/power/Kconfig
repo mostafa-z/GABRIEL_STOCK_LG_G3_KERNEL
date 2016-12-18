@@ -25,6 +25,14 @@ config POWERSUSPEND
 	  Call early suspend handlers when the user requested sleep state
 	  changes.
 
+config HAS_WAKELOCK
+	bool
+	default y
+
+config WAKELOCK
+	bool
+	default y
+
 config HIBERNATE_CALLBACKS
 	bool
 
@@ -113,7 +121,7 @@ config PM_SLEEP_SMP
 config PM_AUTOSLEEP
 	bool "Opportunistic sleep"
 	depends on PM_SLEEP
-	default n
+	default y
 	---help---
 	Allow the kernel to trigger a system transition into a global sleep
 	state automatically whenever there are no active wakeup sources.
@@ -121,7 +129,7 @@ config PM_AUTOSLEEP
 config PM_WAKELOCKS
 	bool "User space wakeup sources interface"
 	depends on PM_SLEEP
-	default n
+	default y
 	---help---
 	Allow user space to create, activate and deactivate wakeup source
 	objects with the help of a sysfs-based interface.
@@ -129,7 +137,7 @@ config PM_WAKELOCKS
 config PM_WAKELOCKS_LIMIT
 	int "Maximum number of user space wakeup sources (0 = no limit)"
 	range 0 100000
-	default 100
+	default 0
 	depends on PM_WAKELOCKS
 
 config PM_WAKELOCKS_GC
@@ -269,7 +277,7 @@ config PM_CLK
 config WQ_POWER_EFFICIENT_DEFAULT
 	bool "Enable workqueue power-efficient mode by default"
 	depends on PM
-	default n
+	default y
 	help
 	  Per-cpu workqueues are generally preferred because they show
 	  better performance thanks to cache locality; unfortunately,
@@ -289,26 +297,6 @@ config WQ_POWER_EFFICIENT_DEFAULT
 config PM_GENERIC_DOMAINS
 	bool
 	depends on PM
-
-config WQ_POWER_EFFICIENT_DEFAULT
-	bool "Enable workqueue power-efficient mode by default"
-	depends on PM
-	default n
-	help
-	  Per-cpu workqueues are generally preferred because they show
-	  better performance thanks to cache locality; unfortunately,
-	  per-cpu workqueues tend to be more power hungry than unbound
-	  workqueues.
-
-	  Enabling workqueue.power_efficient kernel parameter makes the
-	  per-cpu workqueues which were observed to contribute
-	  significantly to power consumption unbound, leading to measurably
-	  lower power usage at the cost of small performance overhead.
-
-	  This config option determines whether workqueue.power_efficient
-	  is enabled by default.
-
-	  If in doubt, say N.
 
 config PM_GENERIC_DOMAINS_RUNTIME
 	def_bool y

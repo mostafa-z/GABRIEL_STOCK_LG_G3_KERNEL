@@ -32,7 +32,7 @@ static int fat_ioctl_get_attributes(struct inode *inode, u32 __user *user_attr)
 
 static int fat_ioctl_set_attributes(struct file *file, u32 __user *user_attr)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct msdos_sb_info *sbi = MSDOS_SB(inode->i_sb);
 	int is_dir = S_ISDIR(inode->i_mode);
 	u32 attr, oldattr;
@@ -117,7 +117,7 @@ out:
 
 long fat_generic_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	struct inode *inode = filp->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(filp);
 	u32 __user *user_attr = (u32 __user *)arg;
 
 	switch (cmd) {
@@ -165,8 +165,8 @@ const struct file_operations fat_file_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
 	.write		= do_sync_write,
-	.read_iter	= generic_file_read_iter,
-	.write_iter	= generic_file_write_iter,
+	.aio_read	= generic_file_aio_read,
+	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
 	.release	= fat_file_release,
 	.unlocked_ioctl	= fat_generic_ioctl,

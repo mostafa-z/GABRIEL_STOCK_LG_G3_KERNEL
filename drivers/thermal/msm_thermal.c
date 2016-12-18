@@ -90,9 +90,7 @@ static struct delayed_work check_temp_work;
 static int intelli_enabled = 1;
 bool core_control = true;
 
-#ifdef CONFIG_ALUCARD_TOUCHSCREEN_BOOST
 int cpu_temp_for_touch_boost;
-#endif
 
 /* dummy parameter for rom thermal and apps */
 static bool enabled = true;
@@ -947,9 +945,7 @@ static void __ref check_temp(struct work_struct *work)
 			limit_init = 1;
 	}
 
-#ifdef CONFIG_ALUCARD_TOUCHSCREEN_BOOST
 	cpu_temp_for_touch_boost = temp;
-#endif
 
 	do_core_control(temp);
 	do_psm();

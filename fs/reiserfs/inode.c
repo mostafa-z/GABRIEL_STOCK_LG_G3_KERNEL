@@ -1596,38 +1596,32 @@ struct dentry *reiserfs_fh_to_parent(struct super_block *sb, struct fid *fid,
 		(fh_type == 6) ? fid->raw[5] : 0);
 }
 
-int reiserfs_encode_fh(struct dentry *dentry, __u32 * data, int *lenp,
-		       int need_parent)
+int reiserfs_encode_fh(struct inode *inode, __u32 * data, int *lenp,
+		       struct inode *parent)
 {
-	struct inode *inode = dentry->d_inode;
 	int maxlen = *lenp;
 
-	if (need_parent && (maxlen < 5)) {
+	if (parent && (maxlen < 5)) {
 		*lenp = 5;
-		return 255;
+		return FILEID_INVALID;
 	} else if (maxlen < 3) {
 		*lenp = 3;
-		return 255;
+		return FILEID_INVALID;
 	}
 
 	data[0] = inode->i_ino;
 	data[1] = le32_to_cpu(INODE_PKEY(inode)->k_dir_id);
 	data[2] = inode->i_generation;
 	*lenp = 3;
-	/* no room for directory info? return what we've stored so far */
-	if (maxlen < 5 || !need_parent)
-		return 3;
-
-	spin_lock(&dentry->d_lock);
-	inode = dentry->d_parent->d_inode;
-	data[3] = inode->i_ino;
-	data[4] = le32_to_cpu(INODE_PKEY(inode)->k_dir_id);
-	*lenp = 5;
-	if (maxlen >= 6) {
-		data[5] = inode->i_generation;
-		*lenp = 6;
+	if (parent) {
+		data[3] = parent->i_ino;
+		data[4] = le32_to_cpu(INODE_PKEY(parent)->k_dir_id);
+		*lenp = 5;
+		if (maxlen >= 6) {
+			data[5] = parent->i_generation;
+			*lenp = 6;
+		}
 	}
-	spin_unlock(&dentry->d_lock);
 	return *lenp;
 }
 
@@ -3073,13 +3067,14 @@ static int reiserfs_releasepage(struct page *page, gfp_t unused_gfp_flags)
 /* We thank Mingming Cao for helping us understand in great detail what
    to do in this section of the code. */
 static ssize_t reiserfs_direct_IO(int rw, struct kiocb *iocb,
-				  struct iov_iter *iter, loff_t offset)
+				  const struct iovec *iov, loff_t offset,
+				  unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
 	struct inode *inode = file->f_mapping->host;
 	ssize_t ret;
 
-	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset,
+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 				  reiserfs_get_blocks_direct_io);
 
 	/*
@@ -3088,7 +3083,7 @@ static ssize_t reiserfs_direct_IO(int rw, struct kiocb *iocb,
 	 */
 	if (unlikely((rw & WRITE) && ret < 0)) {
 		loff_t isize = i_size_read(inode);
-		loff_t end = offset + iov_iter_count(iter);
+		loff_t end = offset + iov_length(iov, nr_segs);
 
 		if (end > isize)
 			vmtruncate(inode, isize);

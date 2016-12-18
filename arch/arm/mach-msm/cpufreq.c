@@ -3,7 +3,7 @@
  * MSM architecture cpufreq driver
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2007-2013, The Linux Foundation. All rights reserved.
  * Author: Mike A. Chan <mikechan@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -17,6 +17,7 @@
  *
  */
 
+#include <linux/earlysuspend.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/cpufreq.h>
@@ -29,8 +30,10 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
-#include <linux/of.h>
+#include <mach/socinfo.h>
 #include <mach/cpufreq.h>
+
+#include "acpuclock.h"
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>
@@ -59,8 +62,9 @@ static unsigned int freq_index[NR_CPUS];
 static unsigned int max_freq_index;
 static struct cpufreq_frequency_table *freq_table;
 static unsigned int *l2_khz;
+static bool is_clk;
+static bool is_sync;
 static unsigned long *mem_bw;
-static bool hotplug_ready;
 
 struct cpufreq_work_struct {
 	struct work_struct work;
@@ -187,7 +191,6 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 	int saved_sched_rt_prio = -EINVAL;
 	struct cpufreq_freqs freqs;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
-	unsigned long rate;
 #ifdef CONFIG_MSM_CPUFREQ_LIMITER
 	unsigned int ll_freq = lower_limit_freq[policy->cpu];
 	unsigned int lbl_freq = lower_boost_limit_freq[policy->cpu];
@@ -220,7 +223,7 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 
 	/*
 	 * Put the caller into SCHED_FIFO priority to avoid cpu starvation
-	 * while increasing frequencies
+	 * in the acpuclk_set_rate path while increasing frequencies
 	 */
 
 	if (freqs.new > freqs.old && current->policy != SCHED_FIFO) {
@@ -231,14 +234,20 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 
 	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
-	rate = new_freq * 1000;
-	rate = clk_round_rate(cpu_clk[policy->cpu], rate);
-	ret = clk_set_rate(cpu_clk[policy->cpu], rate);
-	if (!ret) {
-		freq_index[policy->cpu] = index;
-		update_l2_bw(NULL);
-		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	if (is_clk) {
+		unsigned long rate = new_freq * 1000;
+		rate = clk_round_rate(cpu_clk[policy->cpu], rate);
+		ret = clk_set_rate(cpu_clk[policy->cpu], rate);
+		if (!ret) {
+			freq_index[policy->cpu] = index;
+			update_l2_bw(NULL);
+		}
+	} else {
+		ret = acpuclk_set_rate(policy->cpu, new_freq, SETRATE_CPUFREQ);
 	}
+
+	if (!ret)
+		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
 	/* Restore priority after clock ramp-up */
 	if (freqs.new > freqs.old && saved_sched_policy >= 0) {
@@ -265,6 +274,7 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 	int ret = -EFAULT;
 	int index;
 	struct cpufreq_frequency_table *table;
+
 	struct cpufreq_work_struct *cpu_work = NULL;
 
 	mutex_lock(&per_cpu(cpufreq_suspend, policy->cpu).suspend_mutex);
@@ -320,7 +330,13 @@ static int msm_cpufreq_verify(struct cpufreq_policy *policy)
 
 static unsigned int msm_cpufreq_get_freq(unsigned int cpu)
 {
-	return clk_get_rate(cpu_clk[cpu]) / 1000;
+	if (is_clk && is_sync)
+		cpu = 0;
+
+	if (is_clk)
+		return clk_get_rate(cpu_clk[cpu]) / 1000;
+
+	return acpuclk_get_rate(cpu);
 }
 
 static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
@@ -330,25 +346,26 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	int ret = 0;
 	struct cpufreq_frequency_table *table;
 	struct cpufreq_work_struct *cpu_work = NULL;
-	int cpu;
 
 	table = cpufreq_frequency_get_table(policy->cpu);
 	if (table == NULL)
 		return -ENODEV;
-
- 	/*
-	 * In some SoC, some cores are clocked by same source, and their
-	 * frequencies can not be changed independently. Find all other
-	 * CPUs that share same clock, and mark them as controlled by
-	 * same policy.
+	/*
+	 * In 8625, 8610, and 8226 both cpu core's frequency can not
+	 * be changed independently. Each cpu is bound to
+	 * same frequency. Hence set the cpumask to all cpu.
 	 */
-	for_each_possible_cpu(cpu)
-		if (cpu_clk[cpu] == cpu_clk[policy->cpu])
-			cpumask_set_cpu(cpu, policy->cpus);
+	if (cpu_is_msm8625() || cpu_is_msm8625q() || cpu_is_msm8226()
+		|| cpu_is_msm8610() || (is_clk && is_sync))
+		cpumask_setall(policy->cpus);
 
 	cpu_work = &per_cpu(cpufreq_work, policy->cpu);
 	INIT_WORK(&cpu_work->work, set_cpu_work);
 	init_completion(&cpu_work->complete);
+
+	/* synchronous cpus share the same policy */
+	if (is_clk && !cpu_clk[policy->cpu])
+		return 0;
 
 	if (cpufreq_frequency_table_cpuinfo(policy, table)) {
 #ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
@@ -366,7 +383,10 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 #endif
 #endif
 
-	cur_freq = clk_get_rate(cpu_clk[policy->cpu])/1000;
+	if (is_clk)
+		cur_freq = clk_get_rate(cpu_clk[policy->cpu])/1000;
+	else
+		cur_freq = acpuclk_get_rate(policy->cpu);
 
 	if (cpufreq_frequency_table_target(policy, table, cur_freq,
 	    CPUFREQ_RELATION_H, &index) &&
@@ -384,8 +404,11 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	if (ret)
 		return ret;
 	pr_debug("cpufreq: cpu%d init at %d switching to %d\n",
-			policy->cpu, cur_freq, policy->max);
-	policy->cur = policy->max;
+			policy->cpu, cur_freq, table[index].frequency);
+	policy->cur = table[index].frequency;
+
+	policy->cpuinfo.transition_latency =
+		acpuclk_get_switch_time() * NSEC_PER_USEC;
 
 	return 0;
 }
@@ -396,44 +419,55 @@ static int __cpuinit msm_cpufreq_cpu_callback(struct notifier_block *nfb,
 	unsigned int cpu = (unsigned long)hcpu;
 	int rc;
 
-	/* Fail hotplug until this driver can get CPU clocks */
-	if (!hotplug_ready)
-		return NOTIFY_BAD;
-
 	switch (action & ~CPU_TASKS_FROZEN) {
+	case CPU_ONLINE:
+		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
+		break;
+	case CPU_DOWN_PREPARE:
+		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
+		per_cpu(cpufreq_suspend, cpu).device_suspended = 1;
+		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
+		break;
+	case CPU_DOWN_FAILED:
+		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
+		break;
 	/*
 	 * Scale down clock/power of CPU that is dead and scale it back up
 	 * before the CPU is brought up.
 	 */
 	case CPU_DEAD:
-		clk_disable_unprepare(cpu_clk[cpu]);
-		clk_disable_unprepare(l2_clk);
-		update_l2_bw(NULL);
+		if (is_clk) {
+			clk_disable_unprepare(cpu_clk[cpu]);
+			clk_disable_unprepare(l2_clk);
+			update_l2_bw(NULL);
+		}
 		break;
 	case CPU_UP_CANCELED:
-		clk_unprepare(cpu_clk[cpu]);
-		clk_unprepare(l2_clk);
-		update_l2_bw(NULL);
+		if (is_clk) {
+			clk_unprepare(cpu_clk[cpu]);
+			clk_unprepare(l2_clk);
+			update_l2_bw(NULL);
+		}
 		break;
 	case CPU_UP_PREPARE:
-		rc = clk_prepare(l2_clk);
-		if (rc < 0)
-			return NOTIFY_BAD;
-		rc = clk_prepare(cpu_clk[cpu]);
-		if (rc < 0) {
-			clk_unprepare(l2_clk);
-			return NOTIFY_BAD;
+		if (is_clk) {
+			rc = clk_prepare(l2_clk);
+			if (rc < 0)
+				return NOTIFY_BAD;
+			rc = clk_prepare(cpu_clk[cpu]);
+			if (rc < 0)
+				return NOTIFY_BAD;
+			update_l2_bw(&cpu);
 		}
-		update_l2_bw(&cpu);
 		break;
 	case CPU_STARTING:
-		rc = clk_enable(l2_clk);
-		if (rc < 0)
-			return NOTIFY_BAD;
-		rc = clk_enable(cpu_clk[cpu]);
-		if (rc) {
-			clk_disable(l2_clk);
-			return NOTIFY_BAD;
+		if (is_clk) {
+			rc = clk_enable(l2_clk);
+			if (rc < 0)
+				return NOTIFY_BAD;
+			rc = clk_enable(cpu_clk[cpu]);
+			if (rc < 0)
+				return NOTIFY_BAD;
 		}
 		break;
 	default:
@@ -447,71 +481,33 @@ static struct notifier_block __refdata msm_cpufreq_cpu_notifier = {
 	.notifier_call = msm_cpufreq_cpu_callback,
 };
 
-static int msm_cpufreq_suspend(void)
+/*
+ * Define suspend/resume for cpufreq_driver. Kernel will call
+ * these during suspend/resume with interrupts disabled. This
+ * helps the suspend/resume variable get's updated before cpufreq
+ * governor tries to change the frequency after coming out of suspend.
+ */
+static int msm_cpufreq_suspend(struct cpufreq_policy *policy)
 {
 	int cpu;
 
 	for_each_possible_cpu(cpu) {
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
 		per_cpu(cpufreq_suspend, cpu).device_suspended = 1;
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
 	}
 
-	return NOTIFY_DONE;
+	return 0;
 }
 
-static int msm_cpufreq_resume(void)
+static int msm_cpufreq_resume(struct cpufreq_policy *policy)
 {
-	int cpu, ret;
-	struct cpufreq_policy policy;
+	int cpu;
 
 	for_each_possible_cpu(cpu) {
 		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
 	}
 
-	/*
-	 * Freq request might be rejected during suspend, resulting
-	 * in policy->cur violating min/max constraint.
-	 * Correct the frequency as soon as possible.
-	 */
-	get_online_cpus();
-	for_each_online_cpu(cpu) {
-		ret = cpufreq_get_policy(&policy, cpu);
-		if (ret)
-			continue;
-		if (policy.cur <= policy.max && policy.cur >= policy.min)
-			continue;
-		ret = cpufreq_update_policy(cpu);
-		if (ret)
-			pr_err("cpufreq: Current frequency violates policy min/max for CPU%d\n",
-			       cpu);
-		else
-			pr_debug("cpufreq: Frequency violation fixed for CPU%d\n",
-				cpu);
-	}
-	put_online_cpus();
-
-	return NOTIFY_DONE;
+	return 0;
 }
-
-static int msm_cpufreq_pm_event(struct notifier_block *this,
-				unsigned long event, void *ptr)
-{
-	switch (event) {
-	case PM_POST_HIBERNATION:
-	case PM_POST_SUSPEND:
-		return msm_cpufreq_resume();
-	case PM_HIBERNATION_PREPARE:
-	case PM_SUSPEND_PREPARE:
-		return msm_cpufreq_suspend();
-	default:
-		return NOTIFY_DONE;
-	}
-}
-
-static struct notifier_block msm_cpufreq_pm_notifier = {
-	.notifier_call = msm_cpufreq_pm_event,
-};
 
 static struct freq_attr *msm_freq_attr[] = {
 	&cpufreq_freq_attr_scaling_available_freqs,
@@ -525,6 +521,8 @@ static struct cpufreq_driver msm_cpufreq_driver = {
 	.verify		= msm_cpufreq_verify,
 	.target		= msm_cpufreq_target,
 	.get		= msm_cpufreq_get_freq,
+	.suspend	= msm_cpufreq_suspend,
+	.resume		= msm_cpufreq_resume,
 	.name		= "msm",
 	.attr		= msm_freq_attr,
 };
@@ -710,6 +708,9 @@ bool is_used_by_scaling(unsigned int freq)
 {
 	unsigned int i, cpu_freq;
 
+	if (!dts_freq_table)
+		return -EINVAL;
+
 	for (i = 0; dts_freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
 		cpu_freq = dts_freq_table[i].frequency;
 		if (cpu_freq == CPUFREQ_ENTRY_INVALID)
@@ -771,11 +772,14 @@ static int __init msm_cpufreq_probe(struct platform_device *pdev)
 	for_each_possible_cpu(cpu) {
 		snprintf(clk_name, sizeof(clk_name), "cpu%d_clk", cpu);
 		c = devm_clk_get(dev, clk_name);
-		if (IS_ERR(c))
-			return PTR_ERR(c);
-		cpu_clk[cpu] = c;
+		if (!IS_ERR(c))
+			cpu_clk[cpu] = c;
+		else
+			is_sync = true;
 	}
-	hotplug_ready = true;
+
+	if (!cpu_clk[0])
+		return -ENODEV;
 
 	ret = cpufreq_parse_dt(dev);
 	if (ret)
@@ -790,6 +794,8 @@ static int __init msm_cpufreq_probe(struct platform_device *pdev)
 		pr_err("devfreq governor registration failed\n");
 		return ret;
 	}
+
+	is_clk = true;
 
 #ifdef CONFIG_DEBUG_FS
 	if (!debugfs_create_file("msm_cpufreq", S_IRUGO, NULL, NULL,
@@ -815,33 +821,17 @@ static struct platform_driver msm_cpufreq_plat_driver = {
 
 static int __init msm_cpufreq_register(void)
 {
-	int cpu, rc;
+	int cpu;
 
 	for_each_possible_cpu(cpu) {
 		mutex_init(&(per_cpu(cpufreq_suspend, cpu).suspend_mutex));
 		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
 	}
 
-	rc = platform_driver_probe(&msm_cpufreq_plat_driver,
-				   msm_cpufreq_probe);
-	if (rc < 0) {
-		/* Unblock hotplug if msm-cpufreq probe fails */
-		unregister_hotcpu_notifier(&msm_cpufreq_cpu_notifier);
-		for_each_possible_cpu(cpu)
-			mutex_destroy(&(per_cpu(cpufreq_suspend, cpu).
-					suspend_mutex));
-		return rc;
-	}
-
+	platform_driver_probe(&msm_cpufreq_plat_driver, msm_cpufreq_probe);
 	msm_cpufreq_wq = alloc_workqueue("msm-cpufreq", WQ_HIGHPRI, 0);
-	register_pm_notifier(&msm_cpufreq_pm_notifier);
+	register_hotcpu_notifier(&msm_cpufreq_cpu_notifier);
 	return cpufreq_register_driver(&msm_cpufreq_driver);
 }
 
 subsys_initcall(msm_cpufreq_register);
-
-static int __init msm_cpufreq_early_register(void)
-{
-	return register_hotcpu_notifier(&msm_cpufreq_cpu_notifier);
-}
-core_initcall(msm_cpufreq_early_register);

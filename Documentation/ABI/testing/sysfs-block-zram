@@ -5,21 +5,20 @@ Description:
 		The disksize file is read-write and specifies the disk size
 		which represents the limit on the *uncompressed* worth of data
 		that can be stored in this disk.
-		Unit: bytes
 
 What:		/sys/block/zram<id>/initstate
 Date:		August 2010
 Contact:	Nitin Gupta <ngupta@vflare.org>
 Description:
-		The initstate file is read-only and shows the initialization
+		The disksize file is read-only and shows the initialization
 		state of the device.
 
 What:		/sys/block/zram<id>/reset
 Date:		August 2010
 Contact:	Nitin Gupta <ngupta@vflare.org>
 Description:
-		The reset file is write-only and allows resetting the
-		device. The reset operation frees all the memory associated
+		The disksize file is write-only and allows resetting the
+		device. The reset operation frees all the memory assocaited
 		with this device.
 
 What:		/sys/block/zram<id>/num_reads
@@ -166,3 +165,12 @@ Description:
 		The mm_stat file is read-only and represents device's mm
 		statistics (orig_data_size, compr_data_size, etc.) in a format
 		similar to block layer statistics file format.
+
+What:		/sys/block/zram<id>/debug_stat
+Date:		July 2016
+Contact:	Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Description:
+		The debug_stat file is read-only and represents various
+		device's debugging info useful for kernel developers. Its
+		format is not documented intentionally and may change
+		anytime without any notice.

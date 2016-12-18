@@ -20,7 +20,6 @@
 #ifndef __KERNEL__
 #include "jfs_compat.h"
 #define JBD2_DEBUG
-#define jfs_debug jbd_debug
 #else
 
 #include <linux/types.h>
@@ -31,6 +30,7 @@
 #include <linux/mutex.h>
 #include <linux/timer.h>
 #include <linux/slab.h>
+#include <crypto/hash.h>
 #endif
 
 #define journal_oom_retry 1
@@ -56,7 +56,7 @@
  * CONFIG_JBD2_DEBUG is on.
  */
 #define JBD2_EXPENSIVE_CHECKING
-extern u8 jbd2_journal_enable_debug;
+extern ushort jbd2_journal_enable_debug;
 
 #define jbd_debug(n, f, a...)						\
 	do {								\
@@ -147,12 +147,24 @@ typedef struct journal_header_s
 #define JBD2_CRC32_CHKSUM   1
 #define JBD2_MD5_CHKSUM     2
 #define JBD2_SHA1_CHKSUM    3
+#define JBD2_CRC32C_CHKSUM  4
 
 #define JBD2_CRC32_CHKSUM_SIZE 4
 
 #define JBD2_CHECKSUM_BYTES (32 / sizeof(u32))
 /*
  * Commit block header for storing transactional checksums:
+ *
+ * NOTE: If FEATURE_COMPAT_CHECKSUM (checksum v1) is set, the h_chksum*
+ * fields are used to store a checksum of the descriptor and data blocks.
+ *
+ * If FEATURE_INCOMPAT_CSUM_V2 (checksum v2) is set, then the h_chksum
+ * field is used to store crc32c(uuid+commit_block).  Each journal metadata
+ * block gets its own checksum, and data block checksums are stored in
+ * journal_block_tag (in the descriptor).  The other h_chksum* fields are
+ * not used.
+ *
+ * Checksum v1 and v2 are mutually exclusive features.
  */
 struct commit_header {
 	__be32		h_magic;
@@ -175,12 +187,18 @@ struct commit_header {
 typedef struct journal_block_tag_s
 {
 	__be32		t_blocknr;	/* The on-disk block number */
-	__be32		t_flags;	/* See below */
+	__be16		t_checksum;	/* truncated crc32c(uuid+seq+block) */
+	__be16		t_flags;	/* See below */
 	__be32		t_blocknr_high; /* most-significant high 32bits. */
 } journal_block_tag_t;
 
 #define JBD2_TAG_SIZE32 (offsetof(journal_block_tag_t, t_blocknr_high))
 #define JBD2_TAG_SIZE64 (sizeof(journal_block_tag_t))
+
+/* Tail of descriptor block, for checksumming */
+struct jbd2_journal_block_tail {
+	__be32		t_checksum;	/* crc32c(uuid+descr_block) */
+};
 
 /*
  * The revoke descriptor: used on disk to describe a series of blocks to
@@ -192,6 +210,10 @@ typedef struct jbd2_journal_revoke_header_s
 	__be32		 r_count;	/* Count of bytes used in the block */
 } jbd2_journal_revoke_header_t;
 
+/* Tail of revoke block, for checksumming */
+struct jbd2_journal_revoke_tail {
+	__be32		r_checksum;	/* crc32c(uuid+revoke_block) */
+};
 
 /* Definitions for the journal tag flags word: */
 #define JBD2_FLAG_ESCAPE		1	/* on-disk block is escaped */
@@ -241,7 +263,10 @@ typedef struct journal_superblock_s
 	__be32	s_max_trans_data;	/* Limit of data blocks per trans. */
 
 /* 0x0050 */
-	__u32	s_padding[44];
+	__u8	s_checksum_type;	/* checksum type */
+	__u8	s_padding2[3];
+	__u32	s_padding[42];
+	__be32	s_checksum;		/* crc32c(superblock) */
 
 /* 0x0100 */
 	__u8	s_users[16*48];		/* ids of all fs'es sharing the log */
@@ -263,13 +288,15 @@ typedef struct journal_superblock_s
 #define JBD2_FEATURE_INCOMPAT_REVOKE		0x00000001
 #define JBD2_FEATURE_INCOMPAT_64BIT		0x00000002
 #define JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
+#define JBD2_FEATURE_INCOMPAT_CSUM_V2		0x00000008
 
 /* Features known to this kernel version: */
 #define JBD2_KNOWN_COMPAT_FEATURES	JBD2_FEATURE_COMPAT_CHECKSUM
 #define JBD2_KNOWN_ROCOMPAT_FEATURES	0
 #define JBD2_KNOWN_INCOMPAT_FEATURES	(JBD2_FEATURE_INCOMPAT_REVOKE | \
 					JBD2_FEATURE_INCOMPAT_64BIT | \
-					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT)
+					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
+					JBD2_FEATURE_INCOMPAT_CSUM_V2)
 
 #ifdef __KERNEL__
 
@@ -537,6 +564,11 @@ struct transaction_s
 	unsigned long		t_start;
 
 	/*
+	 * When commit was requested
+	 */
+	unsigned long		t_requested;
+
+	/*
 	 * Checkpointing stats [j_checkpoint_sem]
 	 */
 	struct transaction_chp_stats_s t_chp_stats;
@@ -593,6 +625,7 @@ struct transaction_s
 
 struct transaction_run_stats_s {
 	unsigned long		rs_wait;
+	unsigned long		rs_request_delay;
 	unsigned long		rs_running;
 	unsigned long		rs_locked;
 	unsigned long		rs_flushing;
@@ -605,6 +638,7 @@ struct transaction_run_stats_s {
 
 struct transaction_stats_s {
 	unsigned long		ts_tid;
+	unsigned long		ts_requested;
 	struct transaction_run_stats_s run;
 };
 
@@ -923,6 +957,12 @@ struct journal_s
 	 * superblock pointer here
 	 */
 	void *j_private;
+
+	/* Reference to checksum algorithm driver via cryptoapi */
+	struct crypto_shash *j_chksum_driver;
+
+	/* Precomputed journal UUID checksum for seeding other checksums */
+	__u32 j_csum_seed;
 };
 
 /*
@@ -965,9 +1005,8 @@ void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
 extern void jbd2_journal_commit_transaction(journal_t *);
 
 /* Checkpoint list management */
-int __jbd2_journal_clean_checkpoint_list(journal_t *journal, bool destroy);
+int __jbd2_journal_clean_checkpoint_list(journal_t *journal);
 int __jbd2_journal_remove_checkpoint(struct journal_head *);
-void jbd2_journal_destroy_checkpoint(journal_t *journal);
 void __jbd2_journal_insert_checkpoint(struct journal_head *, transaction_t *);
 
 
@@ -1049,10 +1088,9 @@ extern int	 jbd2_journal_get_undo_access(handle_t *, struct buffer_head *);
 void		 jbd2_journal_set_triggers(struct buffer_head *,
 					   struct jbd2_buffer_trigger_type *type);
 extern int	 jbd2_journal_dirty_metadata (handle_t *, struct buffer_head *);
-extern void	 jbd2_journal_release_buffer (handle_t *, struct buffer_head *);
 extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
 extern void	 journal_sync_buffer (struct buffer_head *);
-extern void	 jbd2_journal_invalidatepage(journal_t *,
+extern int	 jbd2_journal_invalidatepage(journal_t *,
 				struct page *, unsigned long);
 extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
 extern int	 jbd2_journal_stop(handle_t *);
@@ -1108,7 +1146,7 @@ extern struct kmem_cache *jbd2_handle_cache;
 
 static inline handle_t *jbd2_alloc_handle(gfp_t gfp_flags)
 {
-	return kmem_cache_alloc(jbd2_handle_cache, gfp_flags);
+	return kmem_cache_zalloc(jbd2_handle_cache, gfp_flags);
 }
 
 static inline void jbd2_free_handle(handle_t *handle)
@@ -1256,6 +1294,31 @@ static inline int jbd_space_needed(journal_t *journal)
 #define BJ_Types	7
 
 extern int jbd_blocks_per_page(struct inode *inode);
+
+/* JBD uses a CRC32 checksum */
+#define JBD_MAX_CHECKSUM_SIZE 4
+
+static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
+			      const void *address, unsigned int length)
+{
+	struct {
+		struct shash_desc shash;
+		char ctx[JBD_MAX_CHECKSUM_SIZE];
+	} desc;
+	int err;
+
+	BUG_ON(crypto_shash_descsize(journal->j_chksum_driver) >
+		JBD_MAX_CHECKSUM_SIZE);
+
+	desc.shash.tfm = journal->j_chksum_driver;
+	desc.shash.flags = 0;
+	*(u32 *)desc.ctx = crc;
+
+	err = crypto_shash_update(&desc.shash, address, length);
+	BUG_ON(err);
+
+	return *(u32 *)desc.ctx;
+}
 
 #ifdef __KERNEL__
 

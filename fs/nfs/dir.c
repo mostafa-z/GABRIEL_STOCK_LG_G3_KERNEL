@@ -32,6 +32,7 @@
 #include <linux/pagevec.h>
 #include <linux/namei.h>
 #include <linux/mount.h>
+#include <linux/swap.h>
 #include <linux/sched.h>
 #include <linux/kmemleak.h>
 #include <linux/xattr.h>
@@ -351,7 +352,7 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
 
 	for (i = 0; i < array->size; i++) {
 		if (array->array[i].cookie == *desc->dir_cookie) {
-			struct nfs_inode *nfsi = NFS_I(desc->file->f_path.dentry->d_inode);
+			struct nfs_inode *nfsi = NFS_I(file_inode(desc->file));
 			struct nfs_open_dir_context *ctx = desc->file->private_data;
 
 			new_pos = desc->current_index + i;
@@ -477,10 +478,7 @@ different:
 static
 void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
 {
-	struct qstr filename = {
-		.len = entry->len,
-		.name = entry->name,
-	};
+	struct qstr filename = QSTR_INIT(entry->name, entry->len);
 	struct dentry *dentry;
 	struct dentry *alias;
 	struct inode *dir = parent->d_inode;
@@ -678,7 +676,7 @@ out:
 static
 int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
 {
-	struct inode	*inode = desc->file->f_path.dentry->d_inode;
+	struct inode	*inode = file_inode(desc->file);
 	int ret;
 
 	ret = nfs_readdir_xdr_to_array(desc, page, inode);
@@ -709,7 +707,7 @@ void cache_page_release(nfs_readdir_descriptor_t *desc)
 static
 struct page *get_cache_page(nfs_readdir_descriptor_t *desc)
 {
-	return read_cache_page(desc->file->f_path.dentry->d_inode->i_mapping,
+	return read_cache_page(file_inode(desc->file)->i_mapping,
 			desc->page_index, (filler_t *)nfs_readdir_filler, desc);
 }
 
@@ -813,7 +811,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
 {
 	struct page	*page = NULL;
 	int		status;
-	struct inode *inode = desc->file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(desc->file);
 	struct nfs_open_dir_context *ctx = desc->file->private_data;
 
 	dfprintk(DIRCACHE, "NFS: uncached_readdir() searching for cookie %Lu\n",
@@ -920,7 +918,7 @@ out:
 	return res;
 }
 
-static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
+static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
 {
 	struct dentry *dentry = filp->f_path.dentry;
 	struct inode *inode = dentry->d_inode;
@@ -929,10 +927,10 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
 	dfprintk(FILE, "NFS: llseek dir(%s/%s, %lld, %d)\n",
 			dentry->d_parent->d_name.name,
 			dentry->d_name.name,
-			offset, origin);
+			offset, whence);
 
 	mutex_lock(&inode->i_mutex);
-	switch (origin) {
+	switch (whence) {
 		case 1:
 			offset += filp->f_pos;
 		case 0:
@@ -1864,7 +1862,6 @@ static int nfs_unlink(struct inode *dir, struct dentry *dentry)
  */
 static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
-	struct pagevec lru_pvec;
 	struct page *page;
 	char *kaddr;
 	struct iattr attr;
@@ -1904,11 +1901,8 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
 	 * No big deal if we can't add this page to the page cache here.
 	 * READLINK will get the missing page from the server if needed.
 	 */
-	pagevec_init(&lru_pvec, 0);
-	if (!add_to_page_cache(page, dentry->d_inode->i_mapping, 0,
+	if (!add_to_page_cache_lru(page, dentry->d_inode->i_mapping, 0,
 							GFP_KERNEL)) {
-		pagevec_add(&lru_pvec, page);
-		pagevec_lru_add_file(&lru_pvec);
 		SetPageUptodate(page);
 		unlock_page(page);
 	} else
@@ -2100,7 +2094,7 @@ remove_lru_entry:
 	}
 	spin_unlock(&nfs_access_lru_lock);
 	nfs_access_free_list(&head);
-	return (atomic_long_read(&nfs_access_nr_entries) / 100) * sysctl_vfs_cache_pressure;
+	return vfs_pressure_ratio(atomic_long_read(&nfs_access_nr_entries));
 }
 
 static void __nfs_access_zap_cache(struct nfs_inode *nfsi, struct list_head *head)

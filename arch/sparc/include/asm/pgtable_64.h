@@ -615,6 +615,12 @@ static inline unsigned long pte_present(pte_t pte)
 	return val;
 }
 
+#define pte_accessible pte_accessible
+static inline unsigned long pte_accessible(struct mm_struct *mm, pte_t a)
+{
+	return pte_val(a) & _PAGE_VALID;
+}
+
 static inline unsigned long pte_special(pte_t pte)
 {
 	return pte_val(pte) & _PAGE_SPECIAL;
@@ -679,7 +685,7 @@ static inline void __set_pte_at(struct mm_struct *mm, unsigned long addr,
 	 * SUN4V NOTE: _PAGE_VALID is the same value in both the SUN4U
 	 *             and SUN4V pte layout, so this inline test is fine.
 	 */
-	if (likely(mm != &init_mm) && (pte_val(orig) & _PAGE_VALID))
+	if (likely(mm != &init_mm) && pte_accessible(mm, orig))
 		tlb_batch_add(mm, addr, ptep, orig, fullmm);
 }
 
@@ -781,6 +787,7 @@ static inline int io_remap_pfn_range(struct vm_area_struct *vma,
 
 	return remap_pfn_range(vma, from, phys_base >> PAGE_SHIFT, size, prot);
 }
+#define io_remap_pfn_range io_remap_pfn_range 
 
 #include <asm/tlbflush.h>
 #include <asm-generic/pgtable.h>

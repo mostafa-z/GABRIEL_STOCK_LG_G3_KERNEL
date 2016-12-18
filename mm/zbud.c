@@ -96,7 +96,7 @@ struct zbud_pool {
 	struct list_head buddied;
 	struct list_head lru;
 	u64 pages_nr;
-	struct zbud_ops *ops;
+	const struct zbud_ops *ops;
 #ifdef CONFIG_ZPOOL
 	struct zpool *zpool;
 	const struct zpool_ops *zpool_ops;
@@ -133,7 +133,7 @@ static int zbud_zpool_evict(struct zbud_pool *pool, unsigned long handle)
 		return -ENOENT;
 }
 
-static struct zbud_ops zbud_zpool_ops = {
+static const struct zbud_ops zbud_zpool_ops = {
 	.evict =	zbud_zpool_evict
 };
 
@@ -302,7 +302,7 @@ static int num_free_chunks(struct zbud_header *zhdr)
  * Return: pointer to the new zbud pool or NULL if the metadata allocation
  * failed.
  */
-struct zbud_pool *zbud_create_pool(gfp_t gfp, struct zbud_ops *ops)
+struct zbud_pool *zbud_create_pool(gfp_t gfp, const struct zbud_ops *ops)
 {
 	struct zbud_pool *pool;
 	int i;
@@ -357,6 +357,7 @@ int zbud_alloc(struct zbud_pool *pool, size_t size, gfp_t gfp,
 	struct zbud_header *zhdr = NULL;
 	enum buddy bud;
 	struct page *page;
+	int found = 0;
 
 	if (!size || (gfp & __GFP_HIGHMEM))
 		return -EINVAL;
@@ -376,6 +377,7 @@ int zbud_alloc(struct zbud_pool *pool, size_t size, gfp_t gfp,
 				bud = FIRST;
 			else
 				bud = LAST;
+			found = 1;
 			goto found;
 		}
 	}
@@ -411,6 +413,8 @@ found:
 	list_add(&zhdr->lru, &pool->lru);
 
 	*handle = encode_handle(zhdr, bud);
+	if ((gfp & __GFP_ZERO) && found)
+		memset((void *)*handle, 0, size);
 	spin_unlock(&pool->lock);
 
 	return 0;
@@ -463,9 +467,6 @@ void zbud_free(struct zbud_pool *pool, unsigned long handle)
 	spin_unlock(&pool->lock);
 }
 
-#define list_tail_entry(ptr, type, member) \
-	list_entry((ptr)->prev, type, member)
-
 /**
  * zbud_reclaim_page() - evicts allocations from a pool page and frees it
  * @pool:	pool from which a page will attempt to be evicted
@@ -514,7 +515,7 @@ int zbud_reclaim_page(struct zbud_pool *pool, unsigned int retries)
 		return -EINVAL;
 	}
 	for (i = 0; i < retries; i++) {
-		zhdr = list_tail_entry(&pool->lru, struct zbud_header, lru);
+		zhdr = list_last_entry(&pool->lru, struct zbud_header, lru);
 		list_del(&zhdr->lru);
 		list_del(&zhdr->buddy);
 		/* Protect zbud page against free */
@@ -635,5 +636,5 @@ module_init(init_zbud);
 module_exit(exit_zbud);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Seth Jennings <sjenning@linux.vnet.ibm.com>");
+MODULE_AUTHOR("Seth Jennings <sjennings@variantweb.net>");
 MODULE_DESCRIPTION("Buddy Allocator for Compressed Pages");

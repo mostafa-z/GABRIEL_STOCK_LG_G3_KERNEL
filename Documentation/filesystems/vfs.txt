@@ -363,7 +363,6 @@ struct inode_operations {
 	ssize_t (*getxattr) (struct dentry *, const char *, void *, size_t);
 	ssize_t (*listxattr) (struct dentry *, char *, size_t);
 	int (*removexattr) (struct dentry *, const char *);
-	void (*truncate_range)(struct inode *, loff_t, loff_t);
 	void (*update_time)(struct inode *, struct timespec *, int);
 };
 
@@ -473,9 +472,6 @@ otherwise noted.
   removexattr: called by the VFS to remove an extended attribute from
   	a file. This method is called by removexattr(2) system call.
 
-  truncate_range: a method provided by the underlying filesystem to truncate a
-  	range of blocks , i.e. punch a hole somewhere in a file.
-
   update_time: called by the VFS to update a specific time or the i_version of
   	an inode.  If this is not defined the VFS will update the inode itself
   	and call mark_inode_dirty_sync.
@@ -577,14 +573,16 @@ struct address_space_operations {
 	int (*invalidatepage) (struct page *, unsigned long);
 	int (*releasepage) (struct page *, int);
 	void (*freepage)(struct page *);
-	ssize_t (*direct_IO)(int, struct kiocb *, struct iov_iter *iter,
-			loff_t offset);
+	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
+			loff_t offset, unsigned long nr_segs);
 	struct page* (*get_xip_page)(struct address_space *, sector_t,
 			int);
 	/* migrate the contents of a page to the specified target */
 	int (*migratepage) (struct page *, struct page *);
 	int (*launder_page) (struct page *);
 	int (*error_remove_page) (struct mapping *mapping, struct page *page);
+	int (*swap_activate)(struct file *);
+	int (*swap_deactivate)(struct file *);
 };
 
   writepage: called by the VM to write a dirty page to backing store.
@@ -753,6 +751,16 @@ struct address_space_operations {
 	Setting this implies you deal with pages going away under you,
 	unless you have them locked or reference counts increased.
 
+  swap_activate: Called when swapon is used on a file to allocate
+	space if necessary and pin the block lookup information in
+	memory. A return value of zero indicates success,
+	in which case this file can be used to back swapspace. The
+	swapspace operations will be proxied to this address space's
+	->swap_{out,in} methods.
+
+  swap_deactivate: Called during swapoff on files where swap_activate
+	was successful.
+
 
 The File Object
 ===============
@@ -764,7 +772,7 @@ struct file_operations
 ----------------------
 
 This describes how the VFS can manipulate an open file. As of kernel
-2.6.22, the following members are defined:
+3.5, the following members are defined:
 
 struct file_operations {
 	struct module *owner;
@@ -772,9 +780,7 @@ struct file_operations {
 	ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
 	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
 	ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
-	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *, loff_t);
 	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
-	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *, loff_t);
 	int (*readdir) (struct file *, void *, filldir_t);
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
 	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
@@ -796,6 +802,8 @@ struct file_operations {
 	int (*flock) (struct file *, int, struct file_lock *);
 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, size_t, unsigned int);
 	ssize_t (*splice_read)(struct file *, struct pipe_inode_info *, size_t, unsigned int);
+	int (*setlease)(struct file *, long arg, struct file_lock **);
+	long (*fallocate)(struct file *, int mode, loff_t offset, loff_t len);
 };
 
 Again, all methods are called without any locks being held, unless
@@ -807,15 +815,9 @@ otherwise noted.
 
   aio_read: called by io_submit(2) and other asynchronous I/O operations
 
-  read_iter: aio_read replacement, called by io_submit(2) and other
-	asynchronous I/O operations
-
   write: called by write(2) and related system calls
 
   aio_write: called by io_submit(2) and other asynchronous I/O operations
-
-  write_iter: aio_write replacement, called by io_submit(2) and other
-	asynchronous I/O operations
 
   readdir: called when the VFS needs to read the directory contents
 
@@ -869,6 +871,11 @@ otherwise noted.
 
   splice_read: called by the VFS to splice data from file to a pipe. This
 	       method is used by the splice(2) system call
+
+  setlease: called by the VFS to set or release a file lock lease.
+	    setlease has the file_lock_lock held and must not sleep.
+
+  fallocate: called by the VFS to preallocate blocks or punch a hole.
 
 Note that the file operations are implemented by the specific
 filesystem in which the inode resides. When opening a device node

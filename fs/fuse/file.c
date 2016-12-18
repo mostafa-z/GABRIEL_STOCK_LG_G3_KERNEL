@@ -355,7 +355,7 @@ static int fuse_wait_on_page_writeback(struct inode *inode, pgoff_t index)
 
 static int fuse_flush(struct file *file, fl_owner_t id)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_file *ff = file->private_data;
 	struct fuse_req *req;
@@ -988,7 +988,6 @@ static ssize_t fuse_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 		return err;
 
 	count = ocount;
-
 	mutex_lock(&inode->i_mutex);
 	vfs_check_frozen(inode->i_sb, SB_FREEZE_WRITE);
 
@@ -1167,7 +1166,7 @@ static ssize_t fuse_direct_read(struct file *file, char __user *buf,
 				     size_t count, loff_t *ppos)
 {
 	ssize_t res;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 
 	if (is_bad_inode(inode))
 		return -EIO;
@@ -1182,7 +1181,7 @@ static ssize_t fuse_direct_read(struct file *file, char __user *buf,
 static ssize_t __fuse_direct_write(struct file *file, const char __user *buf,
 				   size_t count, loff_t *ppos)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	ssize_t res;
 
 	res = generic_write_checks(file, ppos, &count, 0);
@@ -1200,7 +1199,7 @@ static ssize_t __fuse_direct_write(struct file *file, const char __user *buf,
 static ssize_t fuse_direct_write(struct file *file, const char __user *buf,
 				 size_t count, loff_t *ppos)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	ssize_t res;
 
 	if (is_bad_inode(inode))
@@ -1421,12 +1420,13 @@ static const struct vm_operations_struct fuse_file_vm_ops = {
 	.close		= fuse_vma_close,
 	.fault		= filemap_fault,
 	.page_mkwrite	= fuse_page_mkwrite,
+	.remap_pages	= generic_file_remap_pages,
 };
 
 static int fuse_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	if ((vma->vm_flags & VM_SHARED) && (vma->vm_flags & VM_MAYWRITE)) {
-		struct inode *inode = file->f_dentry->d_inode;
+		struct inode *inode = file_inode(file);
 		struct fuse_conn *fc = get_fuse_conn(inode);
 		struct fuse_inode *fi = get_fuse_inode(inode);
 		struct fuse_file *ff = file->private_data;
@@ -1484,7 +1484,7 @@ static void fuse_lk_fill(struct fuse_req *req, struct file *file,
 			 const struct file_lock *fl, int opcode, pid_t pid,
 			 int flock)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_file *ff = file->private_data;
 	struct fuse_lk_in *arg = &req->misc.lk_in;
@@ -1506,7 +1506,7 @@ static void fuse_lk_fill(struct fuse_req *req, struct file *file,
 
 static int fuse_getlk(struct file *file, struct file_lock *fl)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_req *req;
 	struct fuse_lk_out outarg;
@@ -1531,7 +1531,7 @@ static int fuse_getlk(struct file *file, struct file_lock *fl)
 
 static int fuse_setlk(struct file *file, struct file_lock *fl, int flock)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_req *req;
 	int opcode = (fl->fl_flags & FL_SLEEP) ? FUSE_SETLKW : FUSE_SETLK;
@@ -1563,7 +1563,7 @@ static int fuse_setlk(struct file *file, struct file_lock *fl, int flock)
 
 static int fuse_file_lock(struct file *file, int cmd, struct file_lock *fl)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	int err;
 
@@ -1586,7 +1586,7 @@ static int fuse_file_lock(struct file *file, int cmd, struct file_lock *fl)
 
 static int fuse_file_flock(struct file *file, int cmd, struct file_lock *fl)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	int err;
 
@@ -1640,19 +1640,19 @@ static sector_t fuse_bmap(struct address_space *mapping, sector_t block)
 	return err ? 0 : outarg.block;
 }
 
-static loff_t fuse_file_llseek(struct file *file, loff_t offset, int origin)
+static loff_t fuse_file_llseek(struct file *file, loff_t offset, int whence)
 {
 	loff_t retval;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 
 	/* No i_mutex protection necessary for SEEK_CUR and SEEK_SET */
-	if (origin == SEEK_CUR || origin == SEEK_SET)
-		return generic_file_llseek(file, offset, origin);
+	if (whence == SEEK_CUR || whence == SEEK_SET)
+		return generic_file_llseek(file, offset, whence);
 
 	mutex_lock(&inode->i_mutex);
 	retval = fuse_update_attributes(inode, NULL, file, NULL);
 	if (!retval)
-		retval = generic_file_llseek(file, offset, origin);
+		retval = generic_file_llseek(file, offset, whence);
 	mutex_unlock(&inode->i_mutex);
 
 	return retval;
@@ -1672,17 +1672,30 @@ static int fuse_ioctl_copy_user(struct page **pages, struct iovec *iov,
 	while (iov_iter_count(&ii)) {
 		struct page *page = pages[page_idx++];
 		size_t todo = min_t(size_t, PAGE_SIZE, iov_iter_count(&ii));
-		size_t left;
+		void *kaddr;
 
-		if (!to_user)
-			left = iov_iter_copy_from_user(page, &ii, 0, todo);
-		else
-			left = iov_iter_copy_to_user(page, &ii, 0, todo);
+		kaddr = kmap(page);
 
-		if (unlikely(left))
-			return -EFAULT;
+		while (todo) {
+			char __user *uaddr = ii.iov->iov_base + ii.iov_offset;
+			size_t iov_len = ii.iov->iov_len - ii.iov_offset;
+			size_t copy = min(todo, iov_len);
+			size_t left;
 
-		iov_iter_advance(&ii, todo);
+			if (!to_user)
+				left = copy_from_user(kaddr, uaddr, copy);
+			else
+				left = copy_to_user(uaddr, kaddr, copy);
+
+			if (unlikely(left))
+				return -EFAULT;
+
+			iov_iter_advance(&ii, copy);
+			todo -= copy;
+			kaddr += copy;
+		}
+
+		kunmap(page);
 	}
 
 	return 0;
@@ -2006,7 +2019,7 @@ EXPORT_SYMBOL_GPL(fuse_do_ioctl);
 long fuse_ioctl_common(struct file *file, unsigned int cmd,
 		       unsigned long arg, unsigned int flags)
 {
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 
 	if (!fuse_allow_task(fc, current))
@@ -2190,22 +2203,17 @@ static ssize_t fuse_loop_dio(struct file *filp, const struct iovec *iov,
 
 
 static ssize_t
-fuse_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
+fuse_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
+			loff_t offset, unsigned long nr_segs)
 {
 	ssize_t ret = 0;
 	struct file *file = NULL;
 	loff_t pos = 0;
 
-	/*
-	 * We'll eventually want to work with both iovec and bvec
-	 */
-	BUG_ON(!iov_iter_has_iovec(iter));
-
 	file = iocb->ki_filp;
 	pos = offset;
 
-	ret = fuse_loop_dio(file, iov_iter_iovec(iter), iter->nr_segs, &pos,
-			    rw);
+	ret = fuse_loop_dio(file, iov, nr_segs, &pos, rw);
 
 	return ret;
 }

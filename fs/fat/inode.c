@@ -184,7 +184,8 @@ static int fat_write_end(struct file *file, struct address_space *mapping,
 }
 
 static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
-			     struct iov_iter *iter, loff_t offset)
+			     const struct iovec *iov,
+			     loff_t offset, unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
 	struct address_space *mapping = file->f_mapping;
@@ -201,7 +202,7 @@ static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
 		 *
 		 * Return 0, and fallback to normal buffered write.
 		 */
-		loff_t size = offset + iov_iter_count(iter);
+		loff_t size = offset + iov_length(iov, nr_segs);
 		if (MSDOS_I(inode)->mmu_private < size)
 			return 0;
 	}
@@ -210,9 +211,10 @@ static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
 	 * FAT need to use the DIO_LOCKING for avoiding the race
 	 * condition of fat_get_block() and ->truncate().
 	 */
-	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, fat_get_block);
+	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
+				 fat_get_block);
 	if (ret < 0 && (rw & WRITE))
-		fat_write_failed(mapping, offset + iov_iter_count(iter));
+		fat_write_failed(mapping, offset + iov_length(iov, nr_segs));
 
 	return ret;
 }
@@ -754,10 +756,9 @@ static struct dentry *fat_fh_to_dentry(struct super_block *sb,
 }
 
 static int
-fat_encode_fh(struct dentry *de, __u32 *fh, int *lenp, int connectable)
+fat_encode_fh(struct inode *inode, __u32 *fh, int *lenp, struct inode *parent)
 {
 	int len = *lenp;
-	struct inode *inode =  de->d_inode;
 	u32 ipos_h, ipos_m, ipos_l;
 
 	if (len < 5) {
@@ -773,9 +774,9 @@ fat_encode_fh(struct dentry *de, __u32 *fh, int *lenp, int connectable)
 	fh[1] = inode->i_generation;
 	fh[2] = ipos_h;
 	fh[3] = ipos_m | MSDOS_I(inode)->i_logstart;
-	spin_lock(&de->d_lock);
-	fh[4] = ipos_l | MSDOS_I(de->d_parent->d_inode)->i_logstart;
-	spin_unlock(&de->d_lock);
+	fh[4] = ipos_l;
+	if (parent)
+		fh[4] |= MSDOS_I(parent)->i_logstart;
 	return 3;
 }
 

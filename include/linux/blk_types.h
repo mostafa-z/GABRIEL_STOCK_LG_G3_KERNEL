@@ -118,6 +118,8 @@ struct bio {
 #define BIO_FS_INTEGRITY 9	/* fs owns integrity data, not block layer */
 #define BIO_QUIET	10	/* Make BIO Quiet */
 #define BIO_MAPPED_INTEGRITY 11/* integrity metadata has been remapped */
+#define BIO_SNAP_STABLE	12	/* bio data must be snapshotted during write */
+
 /*
  * Flags starting here get preserved by bio_reset() - this includes
  * BIO_POOL_IDX()
@@ -193,6 +195,7 @@ enum rq_flag_bits {
 	__REQ_SANITIZE,		/* sanitize */
 	__REQ_PM,		/* runtime pm request */
 	__REQ_URGENT,		/* urgent request */
+	__REQ_KERNEL, 		/* direct IO to kernel pages */
 	__REQ_NR_BITS,		/* stops here */
 };
 
@@ -246,5 +249,6 @@ enum rq_flag_bits {
 #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
 #define REQ_SECURE		(1 << __REQ_SECURE)
 #define REQ_PM                 (1 << __REQ_PM)
+#define REQ_KERNEL		(1 << __REQ_KERNEL)
 
 #endif /* __LINUX_BLK_TYPES_H */

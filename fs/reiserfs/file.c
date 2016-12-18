@@ -268,7 +268,7 @@ static ssize_t reiserfs_file_write(struct file *file,	/* the file we are going t
 							 * new current position before returning. */
 				   )
 {
-	struct inode *inode = file->f_path.dentry->d_inode;	// Inode of the file that we are writing to.
+	struct inode *inode = file_inode(file);	// Inode of the file that we are writing to.
 	/* To simplify coding at this time, we store
 	   locked pages in array for now */
 	struct reiserfs_transaction_handle th;
@@ -304,8 +304,8 @@ const struct file_operations reiserfs_file_operations = {
 	.open = reiserfs_file_open,
 	.release = reiserfs_file_release,
 	.fsync = reiserfs_sync_file,
-	.read_iter = generic_file_read_iter,
-	.write_iter = generic_file_write_iter,
+	.aio_read = generic_file_aio_read,
+	.aio_write = generic_file_aio_write,
 	.splice_read = generic_file_splice_read,
 	.splice_write = generic_file_splice_write,
 	.llseek = generic_file_llseek,

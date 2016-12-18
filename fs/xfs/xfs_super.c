@@ -1025,7 +1025,7 @@ xfs_fs_sync_fs(
 		 * We schedule xfssyncd now (now that the disk is
 		 * active) instead of later (when it might not be).
 		 */
-		flush_delayed_work_sync(&mp->m_sync_work);
+		flush_delayed_work(&mp->m_sync_work);
 	}
 
 	return 0;
@@ -1468,6 +1468,7 @@ static struct file_system_type xfs_fs_type = {
 	.kill_sb		= kill_block_super,
 	.fs_flags		= FS_REQUIRES_DEV,
 };
+MODULE_ALIAS_FS("xfs");
 
 STATIC int __init
 xfs_init_zones(void)

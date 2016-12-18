@@ -121,7 +121,7 @@ static void hypfs_evict_inode(struct inode *inode)
 
 static int hypfs_open(struct inode *inode, struct file *filp)
 {
-	char *data = filp->f_path.dentry->d_inode->i_private;
+	char *data = file_inode(filp)->i_private;
 	struct hypfs_sb_info *fs_info;
 
 	if (filp->f_mode & FMODE_WRITE) {
@@ -452,6 +452,7 @@ static struct file_system_type hypfs_type = {
 	.mount		= hypfs_mount,
 	.kill_sb	= hypfs_kill_super
 };
+MODULE_ALIAS_FS("s390_hypfs");
 
 static const struct super_operations hypfs_s_ops = {
 	.statfs		= simple_statfs,

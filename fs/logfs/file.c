@@ -183,7 +183,7 @@ static int logfs_releasepage(struct page *page, gfp_t only_xfs_uses_this)
 
 long logfs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct logfs_inode *li = logfs_inode(inode);
 	unsigned int oldflags, flags;
 	int err;
@@ -263,8 +263,8 @@ const struct inode_operations logfs_reg_iops = {
 };
 
 const struct file_operations logfs_reg_fops = {
-	.read_iter	= generic_file_read_iter,
-	.write_iter	= generic_file_write_iter,
+	.aio_read	= generic_file_aio_read,
+	.aio_write	= generic_file_aio_write,
 	.fsync		= logfs_fsync,
 	.unlocked_ioctl	= logfs_ioctl,
 	.llseek		= generic_file_llseek,

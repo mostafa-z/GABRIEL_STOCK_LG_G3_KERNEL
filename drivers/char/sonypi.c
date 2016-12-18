@@ -938,7 +938,7 @@ static ssize_t sonypi_misc_read(struct file *file, char __user *buf,
 	}
 
 	if (ret > 0) {
-		struct inode *inode = file->f_path.dentry->d_inode;
+		struct inode *inode = file_inode(file);
 		inode->i_atime = current_fs_time(inode->i_sb);
 	}
 
@@ -1433,7 +1433,7 @@ static int __devexit sonypi_remove(struct platform_device *dev)
 	sonypi_disable();
 
 	synchronize_irq(sonypi_device.irq);
-	flush_work_sync(&sonypi_device.input_work);
+	flush_work(&sonypi_device.input_work);
 
 	if (useinput) {
 		input_unregister_device(sonypi_device.input_key_dev);

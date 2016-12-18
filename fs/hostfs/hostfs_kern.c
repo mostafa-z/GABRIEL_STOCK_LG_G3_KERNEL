@@ -30,7 +30,7 @@ static inline struct hostfs_inode_info *HOSTFS_I(struct inode *inode)
 	return list_entry(inode, struct hostfs_inode_info, vfs_inode);
 }
 
-#define FILE_HOSTFS_I(file) HOSTFS_I((file)->f_path.dentry->d_inode)
+#define FILE_HOSTFS_I(file) HOSTFS_I(file_inode(file))
 
 static int hostfs_d_delete(const struct dentry *dentry)
 {
@@ -382,8 +382,8 @@ static const struct file_operations hostfs_file_fops = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
 	.splice_read	= generic_file_splice_read,
-	.read_iter	= generic_file_read_iter,
-	.write_iter	= generic_file_write_iter,
+	.aio_read	= generic_file_aio_read,
+	.aio_write	= generic_file_aio_write,
 	.write		= do_sync_write,
 	.mmap		= generic_file_mmap,
 	.open		= hostfs_file_open,

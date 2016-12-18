@@ -33,6 +33,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/rbtree.h>
+#include <linux/err.h>
 #include <mach/msm_smd.h>
 #include <mach/rpm-smd.h>
 #define CREATE_TRACE_POINTS
@@ -560,8 +561,8 @@ static int msm_rpm_add_kvp_data_common(struct msm_rpm_request *handle,
 	if (probe_status)
 		return probe_status;
 
-	if (!handle) {
-		pr_err("%s(): Invalid handle\n", __func__);
+	if (!handle || !data) {
+		pr_err("%s(): Invalid handle/data\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1193,11 +1194,11 @@ static int msm_rpm_send_data(struct msm_rpm_request *cdata,
 static int _msm_rpm_send_request(struct msm_rpm_request *handle, bool noack)
 {
 	int ret;
-	static DEFINE_MUTEX(send_mtx);
+	static DEFINE_RT_MUTEX(send_mtx);
 
-	mutex_lock(&send_mtx);
+	rt_mutex_lock(&send_mtx);
 	ret = msm_rpm_send_data(handle, MSM_RPM_MSG_REQUEST_TYPE, false, noack);
-	mutex_unlock(&send_mtx);
+	rt_mutex_unlock(&send_mtx);
 
 	return ret;
 }

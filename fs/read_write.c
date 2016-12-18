@@ -23,7 +23,7 @@
 const struct file_operations generic_ro_fops = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
-	.read_iter	= generic_file_read_iter,
+	.aio_read	= generic_file_aio_read,
 	.mmap		= generic_file_readonly_mmap,
 	.splice_read	= generic_file_splice_read,
 };
@@ -54,11 +54,12 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
  * generic_file_llseek_size - generic llseek implementation for regular files
  * @file:	file structure to seek on
  * @offset:	file offset to seek to
- * @origin:	type of seek
- * @size:	max size of file system
+ * @whence:	type of seek
+ * @size:	max size of this file in file system
+ * @eof:	offset used for SEEK_END position
  *
  * This is a variant of generic_file_llseek that allows passing in a custom
- * file size.
+ * maximum file size and a custom EOF position, for e.g. hashed directories
  *
  * Synchronization:
  * SEEK_SET and SEEK_END are unsynchronized (but atomic on 64bit platforms)
@@ -66,14 +67,14 @@ static loff_t lseek_execute(struct file *file, struct inode *inode,
  * read/writes behave like SEEK_SET against seeks.
  */
 loff_t
-generic_file_llseek_size(struct file *file, loff_t offset, int origin,
-		loff_t maxsize)
+generic_file_llseek_size(struct file *file, loff_t offset, int whence,
+		loff_t maxsize, loff_t eof)
 {
 	struct inode *inode = file->f_mapping->host;
 
-	switch (origin) {
+	switch (whence) {
 	case SEEK_END:
-		offset += i_size_read(inode);
+		offset += eof;
 		break;
 	case SEEK_CUR:
 		/*
@@ -99,7 +100,7 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
 		 * In the generic case the entire file is data, so as long as
 		 * offset isn't at the end of the file then the offset is data.
 		 */
-		if (offset >= i_size_read(inode))
+		if (offset >= eof)
 			return -ENXIO;
 		break;
 	case SEEK_HOLE:
@@ -107,9 +108,9 @@ generic_file_llseek_size(struct file *file, loff_t offset, int origin,
 		 * There is a virtual hole at the end of the file, so as long as
 		 * offset isn't i_size or larger, return i_size.
 		 */
-		if (offset >= i_size_read(inode))
+		if (offset >= eof)
 			return -ENXIO;
-		offset = i_size_read(inode);
+		offset = eof;
 		break;
 	}
 
@@ -121,18 +122,19 @@ EXPORT_SYMBOL(generic_file_llseek_size);
  * generic_file_llseek - generic llseek implementation for regular files
  * @file:	file structure to seek on
  * @offset:	file offset to seek to
- * @origin:	type of seek
+ * @whence:	type of seek
  *
  * This is a generic implemenation of ->llseek useable for all normal local
  * filesystems.  It just updates the file offset to the value specified by
- * @offset and @origin under i_mutex.
+ * @offset and @whence under i_mutex.
  */
-loff_t generic_file_llseek(struct file *file, loff_t offset, int origin)
+loff_t generic_file_llseek(struct file *file, loff_t offset, int whence)
 {
 	struct inode *inode = file->f_mapping->host;
 
-	return generic_file_llseek_size(file, offset, origin,
-					inode->i_sb->s_maxbytes);
+	return generic_file_llseek_size(file, offset, whence,
+					inode->i_sb->s_maxbytes,
+					i_size_read(inode));
 }
 EXPORT_SYMBOL(generic_file_llseek);
 
@@ -140,32 +142,32 @@ EXPORT_SYMBOL(generic_file_llseek);
  * noop_llseek - No Operation Performed llseek implementation
  * @file:	file structure to seek on
  * @offset:	file offset to seek to
- * @origin:	type of seek
+ * @whence:	type of seek
  *
  * This is an implementation of ->llseek useable for the rare special case when
  * userspace expects the seek to succeed but the (device) file is actually not
  * able to perform the seek. In this case you use noop_llseek() instead of
  * falling back to the default implementation of ->llseek.
  */
-loff_t noop_llseek(struct file *file, loff_t offset, int origin)
+loff_t noop_llseek(struct file *file, loff_t offset, int whence)
 {
 	return file->f_pos;
 }
 EXPORT_SYMBOL(noop_llseek);
 
-loff_t no_llseek(struct file *file, loff_t offset, int origin)
+loff_t no_llseek(struct file *file, loff_t offset, int whence)
 {
 	return -ESPIPE;
 }
 EXPORT_SYMBOL(no_llseek);
 
-loff_t default_llseek(struct file *file, loff_t offset, int origin)
+loff_t default_llseek(struct file *file, loff_t offset, int whence)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	loff_t retval;
 
 	mutex_lock(&inode->i_mutex);
-	switch (origin) {
+	switch (whence) {
 		case SEEK_END:
 			offset += i_size_read(inode);
 			break;
@@ -214,7 +216,7 @@ out:
 }
 EXPORT_SYMBOL(default_llseek);
 
-loff_t vfs_llseek(struct file *file, loff_t offset, int origin)
+loff_t vfs_llseek(struct file *file, loff_t offset, int whence)
 {
 	loff_t (*fn)(struct file *, loff_t, int);
 
@@ -223,11 +225,11 @@ loff_t vfs_llseek(struct file *file, loff_t offset, int origin)
 		if (file->f_op && file->f_op->llseek)
 			fn = file->f_op->llseek;
 	}
-	return fn(file, offset, origin);
+	return fn(file, offset, whence);
 }
 EXPORT_SYMBOL(vfs_llseek);
 
-SYSCALL_DEFINE3(lseek, unsigned int, fd, off_t, offset, unsigned int, origin)
+SYSCALL_DEFINE3(lseek, unsigned int, fd, off_t, offset, unsigned int, whence)
 {
 	off_t retval;
 	struct file * file;
@@ -239,8 +241,8 @@ SYSCALL_DEFINE3(lseek, unsigned int, fd, off_t, offset, unsigned int, origin)
 		goto bad;
 
 	retval = -EINVAL;
-	if (origin <= SEEK_MAX) {
-		loff_t res = vfs_llseek(file, offset, origin);
+	if (whence <= SEEK_MAX) {
+		loff_t res = vfs_llseek(file, offset, whence);
 		retval = res;
 		if (res != (loff_t)retval)
 			retval = -EOVERFLOW;	/* LFS: should only happen on 32 bit platforms */
@@ -253,7 +255,7 @@ bad:
 #ifdef __ARCH_WANT_SYS_LLSEEK
 SYSCALL_DEFINE5(llseek, unsigned int, fd, unsigned long, offset_high,
 		unsigned long, offset_low, loff_t __user *, result,
-		unsigned int, origin)
+		unsigned int, whence)
 {
 	int retval;
 	struct file * file;
@@ -266,11 +268,11 @@ SYSCALL_DEFINE5(llseek, unsigned int, fd, unsigned long, offset_high,
 		goto bad;
 
 	retval = -EINVAL;
-	if (origin > SEEK_MAX)
+	if (whence > SEEK_MAX)
 		goto out_putf;
 
 	offset = vfs_llseek(file, ((loff_t) offset_high << 32) | offset_low,
-			origin);
+			whence);
 
 	retval = (int)offset;
 	if (offset >= 0) {
@@ -285,7 +287,6 @@ bad:
 }
 #endif
 
-
 /*
  * rw_verify_area doesn't like huge counts. We limit
  * them to something that fits in "int" so that others
@@ -297,7 +298,7 @@ int rw_verify_area(int read_write, struct file *file, loff_t *ppos, size_t count
 	loff_t pos;
 	int retval = -EINVAL;
 
-	inode = file->f_path.dentry->d_inode;
+	inode = file_inode(file);
 	if (unlikely((ssize_t) count < 0))
 		return retval;
 	pos = *ppos;
@@ -325,39 +326,6 @@ int rw_verify_area(int read_write, struct file *file, loff_t *ppos, size_t count
 	return count > MAX_RW_COUNT ? MAX_RW_COUNT : count;
 }
 
-static void wait_on_retry_sync_kiocb(struct kiocb *iocb)
-{
-	set_current_state(TASK_UNINTERRUPTIBLE);
-	if (!kiocbIsKicked(iocb))
-		schedule();
-	else
-		kiocbClearKicked(iocb);
-	__set_current_state(TASK_RUNNING);
-}
-
-ssize_t do_aio_read(struct kiocb *kiocb, const struct iovec *iov,
-		    unsigned long nr_segs, loff_t pos)
-{
-	struct file *file = kiocb->ki_filp;
-
-	if (file->f_op->read_iter) {
-		size_t count;
-		struct iov_iter iter;
-		int ret;
-
-		count = 0;
-		ret = generic_segment_checks(iov, &nr_segs, &count,
-					     VERIFY_WRITE);
-		if (ret)
-			return ret;
-
-		iov_iter_init(&iter, iov, nr_segs, count, 0);
-		return file->f_op->read_iter(kiocb, &iter, pos);
-	}
-
-	return file->f_op->aio_read(kiocb, iov, nr_segs, pos);
-}
-
 ssize_t do_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
 {
 	struct iovec iov = { .iov_base = buf, .iov_len = len };
@@ -369,12 +337,7 @@ ssize_t do_sync_read(struct file *filp, char __user *buf, size_t len, loff_t *pp
 	kiocb.ki_left = len;
 	kiocb.ki_nbytes = len;
 
-	for (;;) {
-		ret = do_aio_read(&kiocb, &iov, 1, kiocb.ki_pos);
-		if (ret != -EIOCBRETRY)
-			break;
-		wait_on_retry_sync_kiocb(&kiocb);
-	}
+	ret = filp->f_op->aio_read(&kiocb, &iov, 1, kiocb.ki_pos);
 
 	if (-EIOCBQUEUED == ret)
 		ret = wait_on_sync_kiocb(&kiocb);
@@ -414,50 +377,24 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 
 EXPORT_SYMBOL(vfs_read);
 
-ssize_t do_aio_write(struct kiocb *kiocb, const struct iovec *iov,
-		     unsigned long nr_segs, loff_t pos)
-{
-	struct file *file = kiocb->ki_filp;
-
-	if (file->f_op->write_iter) {
-		size_t count;
-		struct iov_iter iter;
-		int ret;
-
-		count = 0;
-		ret = generic_segment_checks(iov, &nr_segs, &count,
-					     VERIFY_READ);
-		if (ret)
-			return ret;
-
-		iov_iter_init(&iter, iov, nr_segs, count, 0);
-		return file->f_op->write_iter(kiocb, &iter, pos);
-	}
-
-	return file->f_op->aio_write(kiocb, iov, nr_segs, pos);
-}
-
 ssize_t do_sync_write(struct file *filp, const char __user *buf, size_t len, loff_t *ppos)
 {
 	struct iovec iov = { .iov_base = (void __user *)buf, .iov_len = len };
 	struct kiocb kiocb;
 	ssize_t ret;
 
+	file_start_write(filp);
 	init_sync_kiocb(&kiocb, filp);
 	kiocb.ki_pos = *ppos;
 	kiocb.ki_left = len;
 	kiocb.ki_nbytes = len;
 
-	for (;;) {
-		ret = do_aio_write(&kiocb, &iov, 1, kiocb.ki_pos);
-		if (ret != -EIOCBRETRY)
-			break;
-		wait_on_retry_sync_kiocb(&kiocb);
-	}
+	ret = filp->f_op->aio_write(&kiocb, &iov, 1, kiocb.ki_pos);
 
 	if (-EIOCBQUEUED == ret)
 		ret = wait_on_sync_kiocb(&kiocb);
 	*ppos = kiocb.ki_pos;
+	file_end_write(filp);
 	return ret;
 }
 
@@ -628,12 +565,7 @@ ssize_t do_sync_readv_writev(struct file *filp, const struct iovec *iov,
 	kiocb.ki_left = len;
 	kiocb.ki_nbytes = len;
 
-	for (;;) {
-		ret = fn(&kiocb, iov, nr_segs, kiocb.ki_pos);
-		if (ret != -EIOCBRETRY)
-			break;
-		wait_on_retry_sync_kiocb(&kiocb);
-	}
+	ret = fn(&kiocb, iov, nr_segs, kiocb.ki_pos);
 
 	if (ret == -EIOCBQUEUED)
 		ret = wait_on_sync_kiocb(&kiocb);
@@ -679,8 +611,7 @@ ssize_t do_loop_readv_writev(struct file *filp, struct iovec *iov,
 ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 			      unsigned long nr_segs, unsigned long fast_segs,
 			      struct iovec *fast_pointer,
-			      struct iovec **ret_pointer,
-			      int check_access)
+			      struct iovec **ret_pointer)
 {
 	unsigned long seg;
 	ssize_t ret;
@@ -736,7 +667,7 @@ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 			ret = -EINVAL;
 			goto out;
 		}
-		if (check_access
+		if (type >= 0
 		    && unlikely(!access_ok(vrfy_dir(type), buf, len))) {
 			ret = -EFAULT;
 			goto out;
@@ -769,7 +700,7 @@ static ssize_t do_readv_writev(int type, struct file *file,
 	}
 
 	ret = rw_copy_check_uvector(type, uvector, nr_segs,
-				    ARRAY_SIZE(iovstack), iovstack, &iov, 1);
+				    ARRAY_SIZE(iovstack), iovstack, &iov);
 	if (ret <= 0)
 		goto out;
 
@@ -781,18 +712,18 @@ static ssize_t do_readv_writev(int type, struct file *file,
 	fnv = NULL;
 	if (type == READ) {
 		fn = file->f_op->read;
-		if (file->f_op->aio_read || file->f_op->read_iter)
-			fnv = do_aio_read;
+		fnv = file->f_op->aio_read;
 	} else {
 		fn = (io_fn_t)file->f_op->write;
-		if (file->f_op->aio_write || file->f_op->write_iter)
-			fnv = do_aio_write;
+		fnv = file->f_op->aio_write;
 	}
 
-	if (fnv)
+	if (fnv) {
+		file_start_write(file);
 		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
 						pos, fnv);
-	else
+		file_end_write(file);
+	} else
 		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
 
 out:
@@ -970,8 +901,8 @@ static ssize_t do_sendfile(int out_fd, int in_fd, loff_t *ppos,
 	if (!(out_file->f_mode & FMODE_WRITE))
 		goto fput_out;
 	retval = -EINVAL;
-	in_inode = in_file->f_path.dentry->d_inode;
-	out_inode = out_file->f_path.dentry->d_inode;
+	in_inode = file_inode(in_file);
+	out_inode = file_inode(out_file);
 	retval = rw_verify_area(WRITE, out_file, &out_file->f_pos, count);
 	if (retval < 0)
 		goto fput_out;

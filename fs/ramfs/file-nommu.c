@@ -39,9 +39,9 @@ const struct file_operations ramfs_file_operations = {
 	.mmap			= ramfs_nommu_mmap,
 	.get_unmapped_area	= ramfs_nommu_get_unmapped_area,
 	.read			= do_sync_read,
-	.read_iter		= generic_file_read_iter,
+	.aio_read		= generic_file_aio_read,
 	.write			= do_sync_write,
-	.write_iter		= generic_file_write_iter,
+	.aio_write		= generic_file_aio_write,
 	.fsync			= noop_fsync,
 	.splice_read		= generic_file_splice_read,
 	.splice_write		= generic_file_splice_write,
@@ -202,7 +202,7 @@ unsigned long ramfs_nommu_get_unmapped_area(struct file *file,
 					    unsigned long pgoff, unsigned long flags)
 {
 	unsigned long maxpages, lpages, nr, loop, ret;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct page **pages = NULL, **ptr, *page;
 	loff_t isize;
 

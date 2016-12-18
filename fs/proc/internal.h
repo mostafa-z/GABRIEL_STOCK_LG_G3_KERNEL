@@ -11,8 +11,10 @@
 
 #include <linux/proc_fs.h>
 struct  ctl_table_header;
+struct  mempolicy;
 
 extern struct proc_dir_entry proc_root;
+extern void proc_self_init(void);
 #ifdef CONFIG_PROC_SYSCTL
 extern int proc_sys_init(void);
 extern void sysctl_head_put(struct ctl_table_header *head);
@@ -24,26 +26,6 @@ static inline void sysctl_head_put(struct ctl_table_header *head) { }
 extern int proc_net_init(void);
 #else
 static inline int proc_net_init(void) { return 0; }
-#endif
-
-struct vmalloc_info {
-	unsigned long	used;
-	unsigned long	largest_chunk;
-};
-
-extern struct mm_struct *mm_for_maps(struct task_struct *);
-
-#ifdef CONFIG_MMU
-#define VMALLOC_TOTAL (VMALLOC_END - VMALLOC_START)
-extern void get_vmalloc_info(struct vmalloc_info *vmi);
-#else
-
-#define VMALLOC_TOTAL 0UL
-#define get_vmalloc_info(vmi)			\
-do {						\
-	(vmi)->used = 0;			\
-	(vmi)->largest_chunk = 0;		\
-} while(0)
 #endif
 
 extern int proc_tid_stat(struct seq_file *m, struct pid_namespace *ns,
@@ -72,6 +54,9 @@ struct proc_maps_private {
 	struct task_struct *task;
 #ifdef CONFIG_MMU
 	struct vm_area_struct *tail_vma;
+#endif
+#ifdef CONFIG_NUMA
+	struct mempolicy *task_mempolicy;
 #endif
 };
 

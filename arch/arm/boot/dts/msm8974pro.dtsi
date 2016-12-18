@@ -1843,10 +1843,14 @@
 	};
 };
 
-&memory_hole {
-	qcom,memblock-remove = <0x05a00000 0x7800000
-				0x0fa00000 0x500000>; /* Address and size of the hole */
-};
+/*
+https://github.com/myfluxi/android_kernel_lge_hammerhead/commit/294beedf8607c01bbe7002660bf5e0ec7aabe750
+release memory reserved for other images not accessible by the kernel
+*/
+//&memory_hole {
+//	qcom,memblock-remove = <0x05a00000 0x7800000
+//				0x0fa00000 0x500000>; /* Address and size of the hole */
+//};
 
 &gdsc_venus {
 	qcom,skip-logic-collapse;

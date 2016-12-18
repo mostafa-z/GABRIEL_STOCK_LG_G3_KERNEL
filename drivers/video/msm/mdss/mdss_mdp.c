@@ -38,6 +38,7 @@
 #include <linux/spinlock.h>
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
+#include <linux/kallsyms.h>
 
 #include <mach/board.h>
 #include <mach/clk.h>
