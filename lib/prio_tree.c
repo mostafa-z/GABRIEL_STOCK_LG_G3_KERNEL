@@ -14,6 +14,7 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/prio_tree.h>
+#include <linux/export.h>
 
 /*
  * A clever mix of heap and radix trees forms a radix priority search tree (PST)
@@ -43,27 +44,12 @@
  * The following macros are used for implementing prio_tree for i_mmap
  */
 
-#define RADIX_INDEX(vma)  ((vma)->vm_pgoff)
-#define VMA_SIZE(vma)	  (((vma)->vm_end - (vma)->vm_start) >> PAGE_SHIFT)
-/* avoid overflow */
-#define HEAP_INDEX(vma)	  ((vma)->vm_pgoff + (VMA_SIZE(vma) - 1))
-
-
 static void get_index(const struct prio_tree_root *root,
     const struct prio_tree_node *node,
     unsigned long *radix, unsigned long *heap)
 {
-	if (root->raw) {
-		struct vm_area_struct *vma = prio_tree_entry(
-		    node, struct vm_area_struct, shared.prio_tree_node);
-
-		*radix = RADIX_INDEX(vma);
-		*heap = HEAP_INDEX(vma);
-	}
-	else {
-		*radix = node->start;
-		*heap = node->last;
-	}
+	*radix = node->start;
+	*heap = node->last;
 }
 
 static unsigned long index_bits_to_maxindex[BITS_PER_LONG];
@@ -241,6 +227,7 @@ struct prio_tree_node *prio_tree_insert(struct prio_tree_root *root,
 	BUG();
 	return NULL;
 }
+EXPORT_SYMBOL(prio_tree_insert);
 
 /*
  * Remove a prio_tree_node @node from a radix priority search tree @root. The
@@ -290,6 +277,7 @@ void prio_tree_remove(struct prio_tree_root *root, struct prio_tree_node *node)
 	while (cur != node)
 		cur = prio_tree_replace(root, cur->parent, cur);
 }
+EXPORT_SYMBOL(prio_tree_remove);
 
 static void iter_walk_down(struct prio_tree_iter *iter)
 {
@@ -464,3 +452,4 @@ repeat:
 
 	goto repeat;
 }
+EXPORT_SYMBOL(prio_tree_next);

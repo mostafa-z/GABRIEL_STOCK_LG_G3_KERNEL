@@ -52,7 +52,6 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/kernel_stat.h>
-#include <linux/display_state.h>
 #include <asm/cputime.h>
 #include <linux/module.h>
 
@@ -89,9 +88,6 @@ static spinlock_t speedchange_cpumask_lock;
 
 #define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
 static unsigned long timer_rate;
-
-#define SCREEN_OFF_TIMER_RATE ((unsigned long)(60 * USEC_PER_MSEC))
-static unsigned long prev_timer_rate = DEFAULT_TIMER_RATE;
 
 #define DEFAULT_UP_THRESHOLD 70
 static unsigned long up_threshold;
@@ -156,7 +152,6 @@ static void cpufreq_ondemandplus_timer(unsigned long data)
         unsigned int index;
         static unsigned int stay_counter;
         unsigned long flags;
-		bool display_on = is_display_on();
 
         smp_rmb();
 
@@ -185,13 +180,6 @@ static void cpufreq_ondemandplus_timer(unsigned long data)
         delta_idle = (unsigned int) (now_idle - time_in_idle);
         delta_time = (unsigned int) (pcpu->timer_run_time - idle_exit_time);
 
-		if (display_on && timer_rate != prev_timer_rate)
-			timer_rate = prev_timer_rate;
-		else if (!display_on && timer_rate != SCREEN_OFF_TIMER_RATE) {
-			prev_timer_rate = timer_rate;
-			timer_rate = max(timer_rate, SCREEN_OFF_TIMER_RATE);
-		}
-
         /*
          * If timer ran less than 1ms after short-term sample started, retry.
          */
@@ -203,7 +191,7 @@ static void cpufreq_ondemandplus_timer(unsigned long data)
         else
                 cpu_load = 100 * (delta_time - delta_idle) / delta_time;
 
-        delta_idle = (unsigned int) (now_idle - pcpu->target_set_time_in_idle);
+        delta_idle = (unsigned int) (now_idle -        pcpu->target_set_time_in_idle);
         delta_time = (unsigned int) (pcpu->timer_run_time - pcpu->target_set_time);
 
         if ((delta_time == 0) || (delta_idle > delta_time))
@@ -558,7 +546,6 @@ static ssize_t store_timer_rate(struct kobject *kobj,
                 return ret;
 
         timer_rate = val;
-		prev_timer_rate = val;
         return count;
 }
 

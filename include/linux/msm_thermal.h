@@ -72,8 +72,6 @@ static inline int msm_thermal_set_frequency(uint32_t cpu, uint32_t freq,
 }
 #endif
 
-#ifdef CONFIG_ALUCARD_TOUCHSCREEN_BOOST
 extern int cpu_temp_for_touch_boost;
-#endif
 
 #endif /*__MSM_THERMAL_H*/

@@ -4207,7 +4207,7 @@ unsigned char btrfs_filetype_table[] = {
 static int btrfs_real_readdir(struct file *filp, void *dirent,
 			      filldir_t filldir)
 {
-	struct inode *inode = filp->f_dentry->d_inode;
+	struct inode *inode = file_inode(filp);
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct btrfs_item *item;
 	struct btrfs_dir_item *di;
@@ -4457,7 +4457,7 @@ int btrfs_dirty_inode(struct inode *inode)
  */
 int btrfs_update_time(struct file *file)
 {
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct timespec now;
 	int ret;
 	enum { S_MTIME = 1, S_CTIME = 2, S_VERSION = 4 } sync_it = 0;
@@ -6306,7 +6306,8 @@ free_ordered:
 }
 
 static ssize_t check_direct_IO(struct btrfs_root *root, int rw, struct kiocb *iocb,
-			struct iov_iter *iter, loff_t offset)
+			const struct iovec *iov, loff_t offset,
+			unsigned long nr_segs)
 {
 	int seg;
 	int i;
@@ -6320,49 +6321,34 @@ static ssize_t check_direct_IO(struct btrfs_root *root, int rw, struct kiocb *io
 		goto out;
 
 	/* Check the memory alignment.  Blocks cannot straddle pages */
-	if (iov_iter_has_iovec(iter)) {
-		const struct iovec *iov = iov_iter_iovec(iter);
+	for (seg = 0; seg < nr_segs; seg++) {
+		addr = (unsigned long)iov[seg].iov_base;
+		size = iov[seg].iov_len;
+		end += size;
+		if ((addr & blocksize_mask) || (size & blocksize_mask))
+			goto out;
 
-		for (seg = 0; seg < iter->nr_segs; seg++) {
-			addr = (unsigned long)iov[seg].iov_base;
-				size = iov[seg].iov_len;
-			end += size;
-			if ((addr & blocksize_mask) || (size & blocksize_mask))
-				goto out;
+		/* If this is a write we don't need to check anymore */
+		if (rw & WRITE)
+			continue;
 
-			/* If this is a write we don't need to check anymore */
-			if (rw & WRITE)
-				continue;
-
-			/*
-			 * Check to make sure we don't have duplicate iov_base's
-			 * in this iovec, if so return EINVAL, otherwise we'll
-			 * get csum errors when reading back.
-			 */
-			for (i = seg + 1; i < iter->nr_segs; i++) {
-				if (iov[seg].iov_base == iov[i].iov_base)
-					goto out;
-			}
-		}
-	} else if (iov_iter_has_bvec(iter)) {
-		struct bio_vec *bvec = iov_iter_bvec(iter);
-
-		for (seg = 0; seg < iter->nr_segs; seg++) {
-			addr = (unsigned long)bvec[seg].bv_offset;
-			size = bvec[seg].bv_len;
-			end += size;
-			if ((addr & blocksize_mask) || (size & blocksize_mask))
+		/*
+		 * Check to make sure we don't have duplicate iov_base's in this
+		 * iovec, if so return EINVAL, otherwise we'll get csum errors
+		 * when reading back.
+		 */
+		for (i = seg + 1; i < nr_segs; i++) {
+			if (iov[seg].iov_base == iov[i].iov_base)
 				goto out;
 		}
-	} else
-		BUG();
-
+	}
 	retval = 0;
 out:
 	return retval;
 }
 static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
-			       struct iov_iter *iter, loff_t offset)
+			const struct iovec *iov, loff_t offset,
+			unsigned long nr_segs)
 {
 	struct file *file = iocb->ki_filp;
 	struct inode *inode = file->f_mapping->host;
@@ -6374,8 +6360,10 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
 	int write_bits = 0;
 	size_t count = iov_length(iov, nr_segs);
 
-	if (check_direct_IO(BTRFS_I(inode)->root, rw, iocb, iter, offset))
+	if (check_direct_IO(BTRFS_I(inode)->root, rw, iocb, iov,
+			    offset, nr_segs)) {
 		return 0;
+	}
 
 	lockstart = offset;
 	lockend = offset + count - 1;
@@ -6427,21 +6415,21 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
 
 	ret = __blockdev_direct_IO(rw, iocb, inode,
 		   BTRFS_I(inode)->root->fs_info->fs_devices->latest_bdev,
-		   iter, offset, btrfs_get_blocks_direct, NULL,
+		   iov, offset, nr_segs, btrfs_get_blocks_direct, NULL,
 		   btrfs_submit_direct, 0);
 
 	if (ret < 0 && ret != -EIOCBQUEUED) {
 		clear_extent_bit(&BTRFS_I(inode)->io_tree, offset,
-			      offset + iov_iter_count(iter) - 1,
+			      offset + iov_length(iov, nr_segs) - 1,
 			      EXTENT_LOCKED | write_bits, 1, 0,
 			      &cached_state, GFP_NOFS);
-	} else if (ret >= 0 && ret < iov_iter_count(iter)) {
+	} else if (ret >= 0 && ret < iov_length(iov, nr_segs)) {
 		/*
 		 * We're falling back to buffered, unlock the section we didn't
 		 * do IO on.
 		 */
 		clear_extent_bit(&BTRFS_I(inode)->io_tree, offset + ret,
-			      offset + iov_iter_count(iter) - 1,
+			      offset + iov_length(iov, nr_segs) - 1,
 			      EXTENT_LOCKED | write_bits, 1, 0,
 			      &cached_state, GFP_NOFS);
 	}
@@ -6597,7 +6585,7 @@ static void btrfs_invalidatepage(struct page *page, unsigned long offset)
 int btrfs_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct page *page = vmf->page;
-	struct inode *inode = fdentry(vma->vm_file)->d_inode;
+	struct inode *inode = file_inode(vma->vm_file);
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 	struct extent_io_tree *io_tree = &BTRFS_I(inode)->io_tree;
 	struct btrfs_ordered_extent *ordered;
@@ -6982,7 +6970,7 @@ void btrfs_destroy_inode(struct inode *inode)
 	struct btrfs_ordered_extent *ordered;
 	struct btrfs_root *root = BTRFS_I(inode)->root;
 
-	WARN_ON(!list_empty(&inode->i_dentry));
+	WARN_ON(!hlist_empty(&inode->i_dentry));
 	WARN_ON(inode->i_data.nrpages);
 	WARN_ON(BTRFS_I(inode)->outstanding_extents);
 	WARN_ON(BTRFS_I(inode)->reserved_extents);

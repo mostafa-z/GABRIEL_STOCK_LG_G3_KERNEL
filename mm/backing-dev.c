@@ -164,16 +164,16 @@ static ssize_t read_ahead_kb_store(struct device *dev,
 				  const char *buf, size_t count)
 {
 	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-	char *end;
 	unsigned long read_ahead_kb;
-	ssize_t ret = -EINVAL;
+	ssize_t ret;
 
-	read_ahead_kb = simple_strtoul(buf, &end, 10);
-	if (*buf && (end[0] == '\0' || (end[0] == '\n' && end[1] == '\0'))) {
-		bdi->ra_pages = read_ahead_kb >> (PAGE_SHIFT - 10);
-		ret = count;
-	}
-	return ret;
+	ret = kstrtoul(buf, 10, &read_ahead_kb);
+	if (ret < 0)
+		return ret;
+
+	bdi->ra_pages = read_ahead_kb >> (PAGE_SHIFT - 10);
+
+	return count;
 }
 
 #define K(pages) ((pages) << (PAGE_SHIFT - 10))
@@ -193,16 +193,17 @@ static ssize_t min_ratio_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-	char *end;
 	unsigned int ratio;
-	ssize_t ret = -EINVAL;
+	ssize_t ret;
 
-	ratio = simple_strtoul(buf, &end, 10);
-	if (*buf && (end[0] == '\0' || (end[0] == '\n' && end[1] == '\0'))) {
-		ret = bdi_set_min_ratio(bdi, ratio);
-		if (!ret)
-			ret = count;
-	}
+	ret = kstrtouint(buf, 10, &ratio);
+	if (ret < 0)
+		return ret;
+
+	ret = bdi_set_min_ratio(bdi, ratio);
+	if (!ret)
+		ret = count;
+
 	return ret;
 }
 BDI_SHOW(min_ratio, bdi->min_ratio)
@@ -211,16 +212,17 @@ static ssize_t max_ratio_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-	char *end;
 	unsigned int ratio;
-	ssize_t ret = -EINVAL;
+	ssize_t ret;
 
-	ratio = simple_strtoul(buf, &end, 10);
-	if (*buf && (end[0] == '\0' || (end[0] == '\n' && end[1] == '\0'))) {
-		ret = bdi_set_max_ratio(bdi, ratio);
-		if (!ret)
-			ret = count;
-	}
+	ret = kstrtouint(buf, 10, &ratio);
+	if (ret < 0)
+		return ret;
+
+	ret = bdi_set_max_ratio(bdi, ratio);
+	if (!ret)
+		ret = count;
+
 	return ret;
 }
 BDI_SHOW(max_ratio, bdi->max_ratio)
@@ -235,7 +237,7 @@ static ssize_t stable_pages_required_show(struct device *dev,
 			bdi_cap_stable_pages_required(bdi) ? 1 : 0);
 }
 
-#define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
+/* #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store) */
 
 static struct device_attribute bdi_dev_attrs[] = {
 	__ATTR_RW(read_ahead_kb),
@@ -690,7 +692,7 @@ int bdi_init(struct backing_dev_info *bdi)
 
 	bdi->min_ratio = 0;
 	bdi->max_ratio = 100;
-	bdi->max_prop_frac = PROP_FRAC_BASE;
+	bdi->max_prop_frac = FPROP_FRAC_BASE;
 	spin_lock_init(&bdi->wb_lock);
 	INIT_LIST_HEAD(&bdi->bdi_list);
 	INIT_LIST_HEAD(&bdi->work_list);
@@ -713,7 +715,7 @@ int bdi_init(struct backing_dev_info *bdi)
 	bdi->write_bandwidth = INIT_BW;
 	bdi->avg_write_bandwidth = INIT_BW;
 
-	err = prop_local_init_percpu(&bdi->completions);
+	err = fprop_local_init_percpu(&bdi->completions);
 
 	if (err) {
 err:
@@ -757,7 +759,7 @@ void bdi_destroy(struct backing_dev_info *bdi)
 	for (i = 0; i < NR_BDI_STAT_ITEMS; i++)
 		percpu_counter_destroy(&bdi->bdi_stat[i]);
 
-	prop_local_destroy_percpu(&bdi->completions);
+	fprop_local_destroy_percpu(&bdi->completions);
 }
 EXPORT_SYMBOL(bdi_destroy);
 

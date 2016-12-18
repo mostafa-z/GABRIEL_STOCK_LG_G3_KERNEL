@@ -117,7 +117,7 @@ int gfs2_shrink_qd_memory(struct shrinker *shrink, struct shrink_control *sc)
 	spin_unlock(&qd_lru_lock);
 
 out:
-	return (atomic_read(&qd_lru_count) * sysctl_vfs_cache_pressure) / 100;
+	return vfs_pressure_ratio(atomic_read(&qd_lru_count));
 }
 
 static u64 qd2offset(struct gfs2_quota_data *qd)
@@ -1108,7 +1108,7 @@ void gfs2_quota_change(struct gfs2_inode *ip, s64 change,
 	}
 }
 
-int gfs2_quota_sync(struct super_block *sb, int type, int wait)
+int gfs2_quota_sync(struct super_block *sb, int type)
 {
 	struct gfs2_sbd *sdp = sb->s_fs_info;
 	struct gfs2_quota_data **qda;
@@ -1154,7 +1154,7 @@ int gfs2_quota_sync(struct super_block *sb, int type, int wait)
 
 static int gfs2_quota_sync_timeo(struct super_block *sb, int type)
 {
-	return gfs2_quota_sync(sb, type, 0);
+	return gfs2_quota_sync(sb, type);
 }
 
 int gfs2_quota_refresh(struct gfs2_sbd *sdp, int user, u32 id)

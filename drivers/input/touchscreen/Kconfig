@@ -1147,6 +1147,13 @@ source "drivers/input/touchscreen/g3/Kconfig"
 config STATE_NOTIFIER
         bool "State Notifier"
 
+config ALUCARD_TOUCHSCREEN_BOOST
+	tristate "Touchscreen boost"
+	depends on MSM_CPUFREQ_LIMITER
+	default n
+	help
+	  Alucard touchscreen boost.
+
 endif
 
 config TOUCHSCREEN_SYNAPTICS_G2

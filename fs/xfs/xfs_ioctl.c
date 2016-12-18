@@ -74,14 +74,14 @@ xfs_find_handle(
 	struct inode		*inode;
 	struct file		*file = NULL;
 	struct path		path;
-	int			error;
+	int			error, fput_needed;
 	struct xfs_inode	*ip;
 
 	if (cmd == XFS_IOC_FD_TO_HANDLE) {
-		file = fget(hreq->fd);
+		file = fget_light(hreq->fd, &fput_needed);
 		if (!file)
 			return -EBADF;
-		inode = file->f_path.dentry->d_inode;
+		inode = file_inode(f_file);
 	} else {
 		error = user_lpath((const char __user *)hreq->path, &path);
 		if (error)
@@ -136,7 +136,7 @@ xfs_find_handle(
 
  out_put:
 	if (cmd == XFS_IOC_FD_TO_HANDLE)
-		fput(file);
+		fput_light(file, fput_needed);
 	else
 		path_put(&path);
 	return error;
@@ -169,7 +169,7 @@ xfs_handle_to_dentry(
 	/*
 	 * Only allow handle opens under a directory.
 	 */
-	if (!S_ISDIR(parfilp->f_path.dentry->d_inode->i_mode))
+	if (!S_ISDIR(file_inode(parfilp)->i_mode))
 		return ERR_PTR(-ENOTDIR);
 
 	if (hlen != sizeof(xfs_handle_t))
@@ -1310,7 +1310,7 @@ xfs_file_ioctl(
 	unsigned int		cmd,
 	unsigned long		p)
 {
-	struct inode		*inode = filp->f_path.dentry->d_inode;
+	struct inode		*inode = file_inode(filp);
 	struct xfs_inode	*ip = XFS_I(inode);
 	struct xfs_mount	*mp = ip->i_mount;
 	void			__user *arg = (void __user *)p;

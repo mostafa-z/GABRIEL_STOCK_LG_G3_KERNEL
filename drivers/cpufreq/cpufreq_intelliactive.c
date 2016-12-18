@@ -29,7 +29,7 @@
 #include <linux/workqueue.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
-#include <linux/display_state.h>
+#include <linux/powersuspend.h>
 #include <asm/cputime.h>
 
 static int active_count;
@@ -72,6 +72,9 @@ static unsigned long go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
 
 /* Sampling down factor to be applied to min_sample_time at max freq */
 static unsigned int sampling_down_factor = 1;
+ 
+/* boolean for determining screen on/off state */
+static bool suspended = false;
 
 /* Target load.  Lower values result in higher CPU speeds. */
 #define DEFAULT_TARGET_LOAD 80
@@ -91,9 +94,6 @@ static unsigned long min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
  */
 #define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
 static unsigned long timer_rate = DEFAULT_TIMER_RATE;
-
-#define SCREEN_OFF_TIMER_RATE ((unsigned long)(60 * USEC_PER_MSEC))
-static unsigned long prev_timer_rate = DEFAULT_TIMER_RATE;
 
 /* Busy SDF parameters*/
 #define MIN_BUSY_TIME (100 * USEC_PER_MSEC)
@@ -351,7 +351,6 @@ static void cpufreq_interactive_timer(unsigned long data)
 	unsigned int loadadjfreq;
 	unsigned int index;
 	unsigned long flags;
-	bool display_on = is_display_on();
 	bool boosted;
 	unsigned long mod_min_sample_time;
 	int i, max_load;
@@ -378,13 +377,6 @@ static void cpufreq_interactive_timer(unsigned long data)
 	if (WARN_ON_ONCE(!delta_time))
 		goto rearm;
 
-    if (display_on && timer_rate != prev_timer_rate)
-            timer_rate = prev_timer_rate;
-    else if (!display_on && timer_rate != SCREEN_OFF_TIMER_RATE) {
-            prev_timer_rate = timer_rate;
-            timer_rate = max(timer_rate, SCREEN_OFF_TIMER_RATE);
-    }
-
 	spin_lock_irqsave(&pcpu->target_freq_lock, flags);
 	do_div(cputime_speedadj, delta_time);
 	loadadjfreq = (unsigned int)cputime_speedadj * 100;
@@ -401,7 +393,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		}
 	}
 
-	if (cpu_load >= go_hispeed_load || boosted) {
+	if ((cpu_load >= go_hispeed_load || boosted) && !suspended) {
 		if (pcpu->target_freq < hispeed_freq) {
 			nr_cpus = num_online_cpus();
 
@@ -704,7 +696,7 @@ static int cpufreq_interactive_notifier(
 	int cpu;
 	unsigned long flags;
 
-	if (val == CPUFREQ_POSTCHANGE) {
+	if (val == CPUFREQ_PRECHANGE) {
 		pcpu = &per_cpu(cpuinfo, freq->cpu);
 		if (!down_read_trylock(&pcpu->enable_sem))
 			return 0;
@@ -1025,7 +1017,6 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 				val_round);
 
 	timer_rate = val_round;
-	prev_timer_rate = val_round;
 	return count;
 }
 
@@ -1390,6 +1381,23 @@ static void cpufreq_interactive_nop_timer(unsigned long data)
 {
 }
 
+static void intelliactive_early_suspend(struct power_suspend *handler)
+{
+	suspended = true;
+	return;
+}
+
+static void intelliactive_late_resume(struct power_suspend *handler)
+{
+	suspended = false;
+	return;
+}
+
+static struct power_suspend intelliactive_suspend = {
+	.suspend = intelliactive_early_suspend,
+	.resume = intelliactive_late_resume,
+};
+
 static int __init cpufreq_intelliactive_init(void)
 {
 	unsigned int i;
@@ -1408,6 +1416,8 @@ static int __init cpufreq_intelliactive_init(void)
 		spin_lock_init(&pcpu->target_freq_lock);
 		init_rwsem(&pcpu->enable_sem);
 	}
+
+	register_power_suspend(&intelliactive_suspend);
 
 	spin_lock_init(&target_loads_lock);
 	spin_lock_init(&speedchange_cpumask_lock);

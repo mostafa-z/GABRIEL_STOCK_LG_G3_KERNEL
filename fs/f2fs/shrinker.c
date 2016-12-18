@@ -13,7 +13,6 @@
 #include <linux/f2fs_fs.h>
 
 #include "f2fs.h"
-#include "node.h"
 
 static LIST_HEAD(f2fs_list);
 static DEFINE_SPINLOCK(f2fs_list_lock);
@@ -26,8 +25,8 @@ static unsigned long __count_nat_entries(struct f2fs_sb_info *sbi)
 
 static unsigned long __count_free_nids(struct f2fs_sb_info *sbi)
 {
-	if (NM_I(sbi)->fcnt > MAX_FREE_NIDS)
-		return NM_I(sbi)->fcnt - MAX_FREE_NIDS;
+	if (NM_I(sbi)->fcnt > NAT_ENTRY_PER_BLOCK)
+		return NM_I(sbi)->fcnt - NAT_ENTRY_PER_BLOCK;
 	return 0;
 }
 
@@ -37,7 +36,7 @@ static unsigned long __count_extent_cache(struct f2fs_sb_info *sbi)
 				atomic_read(&sbi->total_ext_node);
 }
 
-int f2fs_shrink_count(struct shrinker *shrink,
+unsigned long f2fs_shrink_count(struct shrinker *shrink,
 				struct shrink_control *sc)
 {
 	struct f2fs_sb_info *sbi;
@@ -73,7 +72,7 @@ int f2fs_shrink_count(struct shrinker *shrink,
 	return count;
 }
 
-int f2fs_shrink_scan(struct shrinker *shrink,
+unsigned long f2fs_shrink_scan(struct shrinker *shrink,
 				struct shrink_control *sc)
 {
 	unsigned long nr = sc->nr_to_scan;
@@ -121,7 +120,7 @@ int f2fs_shrink_scan(struct shrinker *shrink,
 			break;
 	}
 	spin_unlock(&f2fs_list_lock);
-	return f2fs_shrink_count(NULL, NULL);
+	return freed;
 }
 
 void f2fs_join_shrinker(struct f2fs_sb_info *sbi)

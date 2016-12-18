@@ -319,11 +319,11 @@ static void ncp_stop_tasks(struct ncp_server *server) {
 	release_sock(sk);
 	del_timer_sync(&server->timeout_tm);
 
-	flush_work_sync(&server->rcv.tq);
+	flush_work(&server->rcv.tq);
 	if (sk->sk_socket->type == SOCK_STREAM)
-		flush_work_sync(&server->tx.tq);
+		flush_work(&server->tx.tq);
 	else
-		flush_work_sync(&server->timeout_tq);
+		flush_work(&server->timeout_tq);
 }
 
 static int  ncp_show_options(struct seq_file *seq, struct dentry *root)
@@ -525,7 +525,7 @@ static int ncp_fill_super(struct super_block *sb, void *raw_data, int silent)
 	if (!ncp_filp)
 		goto out;
 	error = -ENOTSOCK;
-	sock_inode = ncp_filp->f_path.dentry->d_inode;
+	sock_inode = file_inode(ncp_filp);
 	if (!S_ISSOCK(sock_inode->i_mode))
 		goto out_fput;
 	sock = SOCKET_I(sock_inode);
@@ -564,7 +564,7 @@ static int ncp_fill_super(struct super_block *sb, void *raw_data, int silent)
 		if (!server->info_filp)
 			goto out_bdi;
 		error = -ENOTSOCK;
-		sock_inode = server->info_filp->f_path.dentry->d_inode;
+		sock_inode = file_inode(server->info_filp);
 		if (!S_ISSOCK(sock_inode->i_mode))
 			goto out_fput2;
 		info_sock = SOCKET_I(sock_inode);
@@ -1042,6 +1042,7 @@ static struct file_system_type ncp_fs_type = {
 	.kill_sb	= kill_anon_super,
 	.fs_flags	= FS_BINARY_MOUNTDATA,
 };
+MODULE_ALIAS_FS("ncpfs");
 
 static int __init init_ncp_fs(void)
 {

@@ -532,7 +532,7 @@ out:
 ssize_t compat_rw_copy_check_uvector(int type,
 		const struct compat_iovec __user *uvector, unsigned long nr_segs,
 		unsigned long fast_segs, struct iovec *fast_pointer,
-		struct iovec **ret_pointer, int check_access)
+		struct iovec **ret_pointer)
 {
 	compat_ssize_t tot_len;
 	struct iovec *iov = *ret_pointer = fast_pointer;
@@ -583,7 +583,7 @@ ssize_t compat_rw_copy_check_uvector(int type,
 		}
 		if (len < 0)	/* size_t not fitting in compat_ssize_t .. */
 			goto out;
-		if (check_access &&
+		if (type >= 0 &&
 		    !access_ok(vrfy_dir(type), compat_ptr(buf), len)) {
 			ret = -EFAULT;
 			goto out;
@@ -875,12 +875,12 @@ asmlinkage long compat_sys_old_readdir(unsigned int fd,
 {
 	int error;
 	struct file *file;
+	int fput_needed;
 	struct compat_readdir_callback buf;
 
-	error = -EBADF;
-	file = fget(fd);
+	file = fget_light(fd, &fput_needed);
 	if (!file)
-		goto out;
+		return -EBADF;
 
 	buf.result = 0;
 	buf.dirent = dirent;
@@ -889,8 +889,7 @@ asmlinkage long compat_sys_old_readdir(unsigned int fd,
 	if (buf.result)
 		error = buf.result;
 
-	fput(file);
-out:
+	fput_light(file, fput_needed);
 	return error;
 }
 
@@ -957,16 +956,15 @@ asmlinkage long compat_sys_getdents(unsigned int fd,
 	struct file * file;
 	struct compat_linux_dirent __user * lastdirent;
 	struct compat_getdents_callback buf;
+	int fput_needed;
 	int error;
 
-	error = -EFAULT;
 	if (!access_ok(VERIFY_WRITE, dirent, count))
-		goto out;
+		return -EFAULT;
 
-	error = -EBADF;
-	file = fget(fd);
+	file = fget_light(fd, &fput_needed);
 	if (!file)
-		goto out;
+		return -EBADF;
 
 	buf.current_dir = dirent;
 	buf.previous = NULL;
@@ -983,8 +981,7 @@ asmlinkage long compat_sys_getdents(unsigned int fd,
 		else
 			error = count - buf.count;
 	}
-	fput(file);
-out:
+	fput_light(file, fput_needed);
 	return error;
 }
 
@@ -1045,16 +1042,15 @@ asmlinkage long compat_sys_getdents64(unsigned int fd,
 	struct file * file;
 	struct linux_dirent64 __user * lastdirent;
 	struct compat_getdents_callback64 buf;
+	int fput_needed;
 	int error;
 
-	error = -EFAULT;
 	if (!access_ok(VERIFY_WRITE, dirent, count))
-		goto out;
+		return -EFAULT;
 
-	error = -EBADF;
-	file = fget(fd);
+	file = fget_light(fd, &fput_needed);
 	if (!file)
-		goto out;
+		return -EBADF;
 
 	buf.current_dir = dirent;
 	buf.previous = NULL;
@@ -1072,8 +1068,7 @@ asmlinkage long compat_sys_getdents64(unsigned int fd,
 		else
 			error = count - buf.count;
 	}
-	fput(file);
-out:
+	fput_light(file, fput_needed);
 	return error;
 }
 #endif /* ! __ARCH_OMIT_COMPAT_SYS_GETDENTS64 */
@@ -1106,18 +1101,18 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
 	fnv = NULL;
 	if (type == READ) {
 		fn = file->f_op->read;
-		if (file->f_op->aio_read || file->f_op->read_iter)
-			fnv = do_aio_read;
+		fnv = file->f_op->aio_read;
 	} else {
 		fn = (io_fn_t)file->f_op->write;
-		if (file->f_op->aio_write || file->f_op->write_iter)
-			fnv = do_aio_write;
+		fnv = file->f_op->aio_write;
 	}
 
-	if (fnv)
+	if (fnv) {
+		file_start_write(file);
 		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
 						pos, fnv);
-	else
+		file_end_write(file);
+	} else
 		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
 
 out:

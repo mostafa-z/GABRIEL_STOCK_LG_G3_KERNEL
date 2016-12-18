@@ -6,6 +6,9 @@
 #include <linux/sched.h>
 #include <linux/swap.h>
 #include <linux/swapops.h>
+#include <linux/security.h>
+#include <linux/swap.h>
+#include <linux/swapops.h>
 #include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 
@@ -107,23 +110,11 @@ void *memdup_user(const void __user *src, size_t len)
 }
 EXPORT_SYMBOL(memdup_user);
 
-/**
- * __krealloc - like krealloc() but don't free @p.
- * @p: object to reallocate memory for.
- * @new_size: how many bytes of memory are required.
- * @flags: the type of memory to allocate.
- *
- * This function is like krealloc() except it never frees the originally
- * allocated buffer. Use this if you don't want to free the buffer immediately
- * like, for example, with RCU.
- */
-void *__krealloc(const void *p, size_t new_size, gfp_t flags)
+static __always_inline void *__do_krealloc(const void *p, size_t new_size,
+					   gfp_t flags)
 {
 	void *ret;
 	size_t ks = 0;
-
-	if (unlikely(!new_size))
-		return ZERO_SIZE_PTR;
 
 	if (p)
 		ks = ksize(p);
@@ -137,6 +128,25 @@ void *__krealloc(const void *p, size_t new_size, gfp_t flags)
 
 	return ret;
 }
+
+/**
+ * __krealloc - like krealloc() but don't free @p.
+ * @p: object to reallocate memory for.
+ * @new_size: how many bytes of memory are required.
+ * @flags: the type of memory to allocate.
+ *
+ * This function is like krealloc() except it never frees the originally
+ * allocated buffer. Use this if you don't want to free the buffer immediately
+ * like, for example, with RCU.
+ */
+void *__krealloc(const void *p, size_t new_size, gfp_t flags)
+{
+	if (unlikely(!new_size))
+		return ZERO_SIZE_PTR;
+
+	return __do_krealloc(p, new_size, flags);
+
+}
 EXPORT_SYMBOL(__krealloc);
 
 /**
@@ -147,7 +157,7 @@ EXPORT_SYMBOL(__krealloc);
  *
  * The contents of the object pointed to are preserved up to the
  * lesser of the new and old sizes.  If @p is %NULL, krealloc()
- * behaves exactly like kmalloc().  If @size is 0 and @p is not a
+ * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
  * %NULL pointer, the object pointed to is freed.
  */
 void *krealloc(const void *p, size_t new_size, gfp_t flags)
@@ -159,7 +169,7 @@ void *krealloc(const void *p, size_t new_size, gfp_t flags)
 		return ZERO_SIZE_PTR;
 	}
 
-	ret = __krealloc(p, new_size, flags);
+	ret = __do_krealloc(p, new_size, flags);
 	if (ret && p != ret)
 		kfree(p);
 
@@ -340,36 +350,45 @@ int __attribute__((weak)) get_user_pages_fast(unsigned long start,
 }
 EXPORT_SYMBOL_GPL(get_user_pages_fast);
 
-/**
- * do_vfree - workqueue routine for freeing vmalloced memory
- * @work: data to be freed
- *
- * The work_struct is overlaid to the data being freed, as at the point
- * the work is scheduled the data is no longer valid, be its freeing
- * needs to be delayed until safe.
- */
-static void do_vfree(struct work_struct *work)
+unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot,
+	unsigned long flag, unsigned long pgoff)
 {
-	vfree(work);
+	unsigned long ret;
+	struct mm_struct *mm = current->mm;
+	unsigned long populate;
+
+	ret = security_mmap_file(file, prot, flag);
+	if (!ret) {
+		down_write(&mm->mmap_sem);
+		ret = do_mmap_pgoff(file, addr, len, prot, flag, pgoff,
+				    &populate);
+		up_write(&mm->mmap_sem);
+		if (populate)
+			mm_populate(ret, populate);
+	}
+	return ret;
 }
 
-/**
- * kvfree - free an allocation do by kvmalloc
- * @buffer: buffer to free (MAYBE_NULL)
- *
- * Free a buffer allocated by kvmalloc
- */
-void kvfree(void *buffer)
+unsigned long vm_mmap(struct file *file, unsigned long addr,
+	unsigned long len, unsigned long prot,
+	unsigned long flag, unsigned long offset)
 {
-	if (is_vmalloc_addr(buffer)) {
-		/* Data is no longer valid so just use the allocated space
-		 * as the work_struct
-		 */
-		struct work_struct *work = (struct work_struct *) buffer;
-		INIT_WORK(work, do_vfree);
-		schedule_work(work);
-	} else
-		kfree(buffer);
+	if (unlikely(offset + PAGE_ALIGN(len) < offset))
+		return -EINVAL;
+	if (unlikely(offset & ~PAGE_MASK))
+		return -EINVAL;
+
+	return vm_mmap_pgoff(file, addr, len, prot, flag, offset >> PAGE_SHIFT);
+}
+EXPORT_SYMBOL(vm_mmap);
+
+void kvfree(const void *addr)
+{
+	if (is_vmalloc_addr(addr))
+		vfree(addr);
+	else
+		kfree(addr);
 }
 EXPORT_SYMBOL(kvfree);
 

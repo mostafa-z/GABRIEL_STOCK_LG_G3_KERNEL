@@ -249,7 +249,7 @@ static struct dentry *fuse_d_add_directory(struct dentry *entry,
 		/* This tries to shrink the subtree below alias */
 		fuse_invalidate_entry(alias);
 		dput(alias);
-		if (!list_empty(&inode->i_dentry))
+		if (!hlist_empty(&inode->i_dentry))
 			return ERR_PTR(-EBUSY);
 	} else {
 		dput(alias);
@@ -1124,7 +1124,7 @@ static int fuse_readdir(struct file *file, void *dstbuf, filldir_t filldir)
 	int err;
 	size_t nbytes;
 	struct page *page;
-	struct inode *inode = file->f_path.dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_req *req;
 

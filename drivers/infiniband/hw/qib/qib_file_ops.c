@@ -965,7 +965,7 @@ static int mmap_kvaddr(struct vm_area_struct *vma, u64 pgaddr,
 
 	vma->vm_pgoff = (unsigned long) addr >> PAGE_SHIFT;
 	vma->vm_ops = &qib_file_vm_ops;
-	vma->vm_flags |= VM_RESERVED | VM_DONTEXPAND;
+	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
 	ret = 1;
 
 bail:
@@ -1518,7 +1518,7 @@ static int qib_assign_ctxt(struct file *fp, const struct qib_user_info *uinfo)
 		}
 	}
 
-	i_minor = iminor(fp->f_dentry->d_inode) - QIB_USER_MINOR_BASE;
+	i_minor = iminor(file_inode(fp)) - QIB_USER_MINOR_BASE;
 	if (i_minor)
 		ret = find_free_ctxt(i_minor - 1, fp, uinfo);
 	else

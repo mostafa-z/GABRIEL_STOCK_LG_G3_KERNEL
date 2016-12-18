@@ -857,7 +857,7 @@ xfs_file_fallocate(
 	loff_t		offset,
 	loff_t		len)
 {
-	struct inode	*inode = file->f_path.dentry->d_inode;
+	struct inode	*inode = file_inode(file);
 	long		error;
 	loff_t		new_size = 0;
 	xfs_flock64_t	bf;
@@ -958,7 +958,7 @@ xfs_file_readdir(
 	void		*dirent,
 	filldir_t	filldir)
 {
-	struct inode	*inode = filp->f_path.dentry->d_inode;
+	struct inode	*inode = file_inode(filp);
 	xfs_inode_t	*ip = XFS_I(inode);
 	int		error;
 	size_t		bufsize;
@@ -990,7 +990,6 @@ xfs_file_mmap(
 	struct vm_area_struct *vma)
 {
 	vma->vm_ops = &xfs_file_vm_ops;
-	vma->vm_flags |= VM_CAN_NONLINEAR;
 
 	file_accessed(filp);
 	return 0;
@@ -1044,4 +1043,5 @@ const struct file_operations xfs_dir_file_operations = {
 static const struct vm_operations_struct xfs_file_vm_ops = {
 	.fault		= filemap_fault,
 	.page_mkwrite	= xfs_vm_page_mkwrite,
+	.remap_pages	= generic_file_remap_pages,
 };

@@ -85,7 +85,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
 
 static ssize_t nfsctl_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
 {
-	ino_t ino =  file->f_path.dentry->d_inode->i_ino;
+	ino_t ino =  file_inode(file)->i_ino;
 	char *data;
 	ssize_t rv;
 
@@ -1131,6 +1131,7 @@ static struct file_system_type nfsd_fs_type = {
 	.mount		= nfsd_mount,
 	.kill_sb	= nfsd_umount,
 };
+MODULE_ALIAS_FS("nfsd");
 
 #ifdef CONFIG_PROC_FS
 static int create_proc_exports_entry(void)

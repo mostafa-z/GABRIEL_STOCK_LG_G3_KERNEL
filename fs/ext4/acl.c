@@ -311,8 +311,8 @@ ext4_acl_chmod(struct inode *inode)
 	if (error)
 		return error;
 retry:
-	handle = ext4_journal_start(inode,
-			EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+				    ext4_jbd2_credits_xattr(inode));
 	if (IS_ERR(handle)) {
 		error = PTR_ERR(handle);
 		ext4_std_error(inode->i_sb, error);
@@ -374,7 +374,7 @@ ext4_xattr_get_acl(struct dentry *dentry, const char *name, void *buffer,
 		return PTR_ERR(acl);
 	if (acl == NULL)
 		return -ENODATA;
-	error = posix_acl_to_xattr(acl, buffer, size);
+	error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
 	posix_acl_release(acl);
 
 	return error;
@@ -397,7 +397,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
 		return -EPERM;
 
 	if (value) {
-		acl = posix_acl_from_xattr(value, size);
+		acl = posix_acl_from_xattr(&init_user_ns, value, size);
 		if (IS_ERR(acl))
 			return PTR_ERR(acl);
 		else if (acl) {
@@ -409,7 +409,8 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
 		acl = NULL;
 
 retry:
-	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
+	handle = ext4_journal_start(inode, EXT4_HT_XATTR,
+				    ext4_jbd2_credits_xattr(inode));
 	if (IS_ERR(handle)) {
 		error = PTR_ERR(handle);
 		goto release_and_out;
