@@ -44,7 +44,7 @@ struct cpufreq_stats {
 
 struct all_cpufreq_stats {
 	unsigned int state_num;
-	u64 *time_in_state;
+	cputime64_t *time_in_state;
 	unsigned int *freq_table;
 };
 
@@ -551,7 +551,7 @@ static void cpufreq_allstats_create(unsigned int cpu,
 	}
 
 	/*Allocate memory for freq table per cpu as well as clockticks per freq*/
-	alloc_size = count * sizeof(int) + count * sizeof(u64);
+	alloc_size = count * sizeof(int) + count * sizeof(cputime64_t);
 	all_stat->time_in_state = kzalloc(alloc_size, GFP_KERNEL);
 	if (!all_stat->time_in_state) {
 		pr_warn("Cannot allocate memory for cpufreq time_in_state\n");
@@ -738,19 +738,20 @@ static int __init cpufreq_stats_init(void)
 		return ret;
 
 	create_all_freq_table();
+	register_hotcpu_notifier(&cpufreq_stat_cpu_notifier);
+	for_each_online_cpu(cpu)
+		cpufreq_update_policy(cpu);
 
 	ret = cpufreq_register_notifier(&notifier_trans_block,
 				CPUFREQ_TRANSITION_NOTIFIER);
 	if (ret) {
 		cpufreq_unregister_notifier(&notifier_policy_block,
 				CPUFREQ_POLICY_NOTIFIER);
+		unregister_hotcpu_notifier(&cpufreq_stat_cpu_notifier);
+		for_each_online_cpu(cpu)
+			cpufreq_stats_free_table(cpu);
 		free_all_freq_table();
 		return ret;
-	}
-
-	register_hotcpu_notifier(&cpufreq_stat_cpu_notifier);
-	for_each_online_cpu(cpu) {
-		cpufreq_update_policy(cpu);
 	}
 
 	ret = sysfs_create_file(cpufreq_global_kobject,
