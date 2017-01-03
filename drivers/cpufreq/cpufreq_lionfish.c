@@ -12,7 +12,7 @@
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/kernel_stat.h>
-#include <linux/cpufreq_governor.h>
+#include "cpufreq_governor.h"
 
 /* Lionfish governor tunable defaults */
 #define DEF_FREQUENCY_JUMP_THRESHOLD	(95)
