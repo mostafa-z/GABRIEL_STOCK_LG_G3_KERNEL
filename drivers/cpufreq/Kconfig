@@ -356,6 +356,7 @@ config CPU_FREQ_GOV_INTERACTIVE
 config CPU_FREQ_GOV_ELEMENTALX
 	tristate "'elementalx' cpufreq policy governor"
 	select CPU_FREQ_TABLE
+	default y
 	help
 	  'elementalx' - This driver adds a dynamic cpufreq policy governor.
 
@@ -405,6 +406,7 @@ config CPU_FREQ_GOV_CHILL
 config CPU_FREQ_GOV_DESPAIR
 	tristate "'despair' cpufreq governor"
 	depends on CPU_FREQ
+	default y
 
 config LGE_PM_CPU_FREQ_GOV_LCDOFF
 	bool "CPU_FREQ_BOOST job"
@@ -477,6 +479,7 @@ config CPU_FREQ_GOV_LIONHEART
 config CPU_FREQ_GOV_BIOSHOCK
 	tristate "'bioshock' cpufreq bioshock"
 	depends on CPU_FREQ
+	default y
 	help
 	  'bioshock' - More aggressive version of conservative
 
@@ -529,6 +532,7 @@ config CPU_FREQ_GOV_ALUCARD
 config CPU_FREQ_GOV_LIONFISH
 	tristate "'lionfish' governor"
 	depends on CPU_FREQ
+	default y
 	help
 	  'lionfish' - this is an improved version of the conservative governor
 	  that is optimized for smartphones. To avoid lag, it quickly jumps
