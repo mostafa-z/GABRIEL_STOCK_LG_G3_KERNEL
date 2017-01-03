@@ -12,6 +12,7 @@
  */
 
 #include <linux/slab.h>
+#include <linux/err.h>
 #include "cpufreq_governor.h"
 
 /* elementalx governor macros */
