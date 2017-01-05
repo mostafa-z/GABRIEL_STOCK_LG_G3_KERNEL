@@ -45,6 +45,7 @@ struct mdss_mdp_cmd_ctx {
 	struct work_struct clk_work;
 	struct delayed_work ulps_work;
 	struct work_struct pp_done_work;
+	struct workqueue_struct *early_wakeup_clk_wq;
 	atomic_t pp_done_cnt;
 
 	/* te config */
@@ -815,6 +816,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctx->ctl = ctl;
 	ctx->pp_num = mixer->num;
 	ctx->pp_timeout_report_cnt = 0;
+	ctx->early_wakeup_clk_wq
+		= alloc_workqueue("early_wakeup_clk_wq", WQ_HIGHPRI, 0);
 	init_waitqueue_head(&ctx->pp_waitq);
 	init_completion(&ctx->stop_comp);
 	spin_lock_init(&ctx->clk_lock);
