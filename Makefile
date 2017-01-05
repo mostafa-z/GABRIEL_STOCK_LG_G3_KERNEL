@@ -381,6 +381,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-shift-overflow -Wno-tautological-compare -Wno-array-bounds \
            -Wno-unused-const-variable -Wno-misleading-indentation \
 		   -fno-delete-null-pointer-checks \
+		   -mcpu=cortex-a15 -mtune=cortex-a15 \
 		   -std=gnu89 -fno-pic
 
 KBUILD_AFLAGS_KERNEL :=
