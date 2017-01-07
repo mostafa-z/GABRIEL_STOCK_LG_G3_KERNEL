@@ -2397,7 +2397,6 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 	unsigned long flags;
 	int cpu, src_cpu, success = 0;
 	bool notify = 0;
-	struct rq *rq;
 #ifdef CONFIG_SMP
 	struct rq *rq;
 	int long_sleep = 0;

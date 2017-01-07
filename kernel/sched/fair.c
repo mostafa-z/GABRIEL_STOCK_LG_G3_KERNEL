@@ -4480,41 +4480,6 @@ struct sg_lb_stats {
 	unsigned int group_util;	/* sum utilization of group */
 };
 
-#ifdef CONFIG_SCHED_HMP
-
-static int
-bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
-{
-	int nr_cpus;
-
-	if (sds->this_group_capacity <= sds->busiest_group_capacity)
-		return 0;
-
-	if (sds->busiest_nr_big_tasks &&
-			 sds->this_group_capacity > sds->busiest_group_capacity)
-		return 0;
-
-	nr_cpus = cpumask_weight(sched_group_cpus(sds->busiest));
-
-	if ((sds->busiest_scaled_load < nr_cpus * sched_spill_load) &&
-		(sds->busiest_nr_running <
-			nr_cpus * sysctl_sched_spill_nr_run)) {
-			return 1;
-	}
-
-	return 0;
-}
-
-#else	/* CONFIG_SCHED_HMP */
-
-static inline int
-bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
-{
-	return 0;
-}
-
-#endif	/* CONFIG_SCHED_HMP */
-
 static unsigned long scale_rt_util(int cpu);
 
 /*
@@ -5813,6 +5778,35 @@ int check_power_save_busiest_group(struct lb_env *env, struct sd_lb_stats *sds)
 	return 0;
 }
 #endif /* CONFIG_SCHED_MC || CONFIG_SCHED_SMT */
+
+#ifdef CONFIG_SCHED_HMP
+
+static int
+bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
+{
+	if (sds->this_group_capacity <= sds->busiest_group_capacity)
+		return 0;
+
+	if (sds->busiest_nr_big_tasks &&
+			 sds->this_group_capacity > sds->busiest_group_capacity)
+		return 0;
+
+	if ((sds->busiest_nr_running - sds->busiest_nr_small_tasks) <=
+				 sds->busiest_group_capacity)
+		return 1;
+
+	return 0;
+}
+
+#else	/* CONFIG_SCHED_HMP */
+
+static inline int
+bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
+{
+	return 0;
+}
+
+#endif	/* CONFIG_SCHED_HMP */
 
 
 static unsigned long default_scale_freq_power(struct sched_domain *sd, int cpu)
@@ -7199,7 +7193,7 @@ static inline struct sched_domain *lowest_flag_domain(int cpu, int flag)
  * completely idle packages/cores just for the purpose of idle load balancing
  * when there are other idle cpu's which are better suited for that job.
  */
-static int find_new_ilb(int cpu)
+static int find_new_ilb(int cpu, int type)
 {
 	int ilb = cpumask_first(nohz.idle_cpus_mask);
 	struct sched_group *ilbg;
