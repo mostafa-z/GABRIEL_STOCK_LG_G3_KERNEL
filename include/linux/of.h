@@ -234,9 +234,6 @@ extern int of_property_read_u8_array(const struct device_node *np,
 			const char *propname, u8 *out_values, size_t sz);
 extern int of_property_read_u16_array(const struct device_node *np,
 			const char *propname, u16 *out_values, size_t sz);
-extern int of_property_read_u32_index(const struct device_node *np,
-				       const char *propname,
-				       u32 index, u32 *out_value);
 extern int of_property_read_u32_array(const struct device_node *np,
 				      const char *propname,
 				      u32 *out_values,

@@ -221,7 +221,6 @@ int __init cma_fdt_scan(unsigned long node, const char *uname,
 	const char *name;
 	bool in_system;
 	phys_addr_t limit = MEMBLOCK_ALLOC_ANYWHERE;
-	const char *status;
 
 	if (!of_get_flat_dt_prop(node, "linux,contiguous-region", NULL))
 		return 0;
