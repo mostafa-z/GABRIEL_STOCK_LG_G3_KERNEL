@@ -18,6 +18,8 @@ struct timekeeper {
 	u32			mult;
 	/* The shift value of the current clocksource. */
 	u32			shift;
+	/* CLOCK_MONOTONIC time value of a pending leap-second*/
+	ktime_t next_leap_ktime;
 	/* Number of clock cycles in one NTP interval. */
 	cycle_t			cycle_interval;
 	/* Number of clock shifted nano seconds in one NTP interval. */
