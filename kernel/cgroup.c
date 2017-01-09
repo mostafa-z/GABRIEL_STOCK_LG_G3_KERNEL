@@ -52,7 +52,7 @@
 #include <linux/module.h>
 #include <linux/delayacct.h>
 #include <linux/cgroupstats.h>
-#include <linux/hashtable.h>
+#include <linux/hash.h>
 #include <linux/namei.h>
 #include <linux/pid_namespace.h>
 #include <linux/idr.h>
@@ -401,18 +401,22 @@ static int css_set_count;
  * account cgroups in empty hierarchies.
  */
 #define CSS_SET_HASH_BITS	7
-static DEFINE_HASHTABLE(css_set_table, CSS_SET_HASH_BITS);
+#define CSS_SET_TABLE_SIZE	(1 << CSS_SET_HASH_BITS)
+static struct hlist_head css_set_table[CSS_SET_TABLE_SIZE];
 
-static unsigned long css_set_hash(struct cgroup_subsys_state *css[])
+static struct hlist_head *css_set_hash(struct cgroup_subsys_state *css[])
 {
 	int i;
-	unsigned long key = 0UL;
+	int index;
+	unsigned long tmp = 0UL;
 
 	for (i = 0; i < CGROUP_SUBSYS_COUNT; i++)
-		key += (unsigned long)css[i];
-	key = (key >> 16) ^ key;
+		tmp += (unsigned long)css[i];
+	tmp = (tmp >> 16) ^ tmp;
 
-	return key;
+	index = hash_long(tmp, CSS_SET_HASH_BITS);
+
+	return &css_set_table[index];
 }
 
 static void free_css_set_work(struct work_struct *work)
@@ -427,19 +431,10 @@ static void free_css_set_work(struct work_struct *work)
 		struct cgroup *cgrp = link->cgrp;
 		list_del(&link->cg_link_list);
 		list_del(&link->cgrp_link_list);
-
-		/*
-		 * We may not be holding cgroup_mutex, and if cgrp->count is
-		 * dropped to 0 the cgroup can be destroyed at any time, hence
-		 * rcu_read_lock is used to keep it alive.
-		 */
-		rcu_read_lock();
 		if (atomic_dec_and_test(&cgrp->count)) {
 			check_for_release(cgrp);
 			cgroup_wakeup_rmdir_waiter(cgrp);
 		}
-		rcu_read_unlock();
-		
 		kfree(link);
 	}
 	write_unlock(&css_set_lock);
@@ -484,7 +479,7 @@ static void put_css_set(struct css_set *cg)
 		return;
 	}
 
-	hash_del(&cg->hlist);
+	hlist_del(&cg->hlist);
 	css_set_count--;
 
 	write_unlock(&css_set_lock);
@@ -583,8 +578,9 @@ static struct css_set *find_existing_css_set(
 {
 	int i;
 	struct cgroupfs_root *root = cgrp->root;
+	struct hlist_head *hhead;
+	struct hlist_node *node;
 	struct css_set *cg;
-	unsigned long key;
 
 	/*
 	 * Build the set of subsystem state objects that we want to see in the
@@ -604,8 +600,8 @@ static struct css_set *find_existing_css_set(
 		}
 	}
 
-	key = css_set_hash(template);
-	hash_for_each_possible(css_set_table, cg, hlist, key) {
+	hhead = css_set_hash(template);
+	hlist_for_each_entry(cg, node, hhead, hlist) {
 		if (!compare_css_sets(cg, oldcg, cgrp, template))
 			continue;
 
@@ -622,12 +618,10 @@ static void free_cg_links(struct list_head *tmp)
 	struct cg_cgroup_link *link;
 	struct cg_cgroup_link *saved_link;
 
-	write_lock(&css_set_lock);
 	list_for_each_entry_safe(link, saved_link, tmp, cgrp_link_list) {
 		list_del(&link->cgrp_link_list);
 		kfree(link);
 	}
-	write_unlock(&css_set_lock);
 }
 
 /*
@@ -640,17 +634,14 @@ static int allocate_cg_links(int count, struct list_head *tmp)
 	struct cg_cgroup_link *link;
 	int i;
 	INIT_LIST_HEAD(tmp);
-	write_lock(&css_set_lock);
 	for (i = 0; i < count; i++) {
 		link = kmalloc(sizeof(*link), GFP_KERNEL);
 		if (!link) {
-			write_unlock(&css_set_lock);
 			free_cg_links(tmp);
 			return -ENOMEM;
 		}
 		list_add(&link->cgrp_link_list, tmp);
 	}
-	write_unlock(&css_set_lock);
 	return 0;
 }
 
@@ -694,8 +685,8 @@ static struct css_set *find_css_set(
 
 	struct list_head tmp_cg_links;
 
+	struct hlist_head *hhead;
 	struct cg_cgroup_link *link;
-	unsigned long key;
 
 	/* First see if we already have a cgroup group that matches
 	 * the desired set */
@@ -741,8 +732,8 @@ static struct css_set *find_css_set(
 	css_set_count++;
 
 	/* Add this cgroup group to the hash table */
-	key = css_set_hash(res->subsys);
-	hash_add(css_set_table, &res->hlist, key);
+	hhead = css_set_hash(res->subsys);
+	hlist_add_head(&res->hlist, hhead);
 
 	write_unlock(&css_set_lock);
 
@@ -1131,18 +1122,17 @@ static int cgroup_show_options(struct seq_file *seq, struct dentry *dentry)
 
 	mutex_lock(&cgroup_root_mutex);
 	for_each_subsys(root, ss)
-		seq_show_option(seq, ss->name, NULL);
+		seq_printf(seq, ",%s", ss->name);
 	if (test_bit(ROOT_NOPREFIX, &root->flags))
 		seq_puts(seq, ",noprefix");
 	if (test_bit(ROOT_XATTR, &root->flags))
 		seq_puts(seq, ",xattr");
 	if (strlen(root->release_agent_path))
-		seq_show_option(seq, "release_agent",
-				root->release_agent_path);
+		seq_printf(seq, ",release_agent=%s", root->release_agent_path);
 	if (clone_children(&root->top_cgroup))
 		seq_puts(seq, ",clone_children");
 	if (strlen(root->name))
-		seq_show_option(seq, "name", root->name);
+		seq_printf(seq, ",name=%s", root->name);
 	mutex_unlock(&cgroup_root_mutex);
 	return 0;
 }
@@ -1609,7 +1599,7 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 	opts.new_root = new_root;
 
 	/* Locate an existing or new sb for this hierarchy */
-	sb = sget(fs_type, cgroup_test_super, cgroup_set_super, &opts);
+	sb = sget(fs_type, cgroup_test_super, cgroup_set_super, 0, &opts);
 	if (IS_ERR(sb)) {
 		ret = PTR_ERR(sb);
 		cgroup_drop_root(opts.new_root);
@@ -1625,7 +1615,6 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		struct cgroupfs_root *existing_root;
 		const struct cred *cred;
 		int i;
-		struct css_set *cg;
 
 		BUG_ON(sb->s_root != NULL);
 
@@ -1679,8 +1668,14 @@ static struct dentry *cgroup_mount(struct file_system_type *fs_type,
 		/* Link the top cgroup in this hierarchy into all
 		 * the css_set objects */
 		write_lock(&css_set_lock);
-		hash_for_each(css_set_table, i, cg, hlist)
-			link_css_set(&tmp_cg_links, cg, root_cgrp);
+		for (i = 0; i < CSS_SET_TABLE_SIZE; i++) {
+			struct hlist_head *hhead = &css_set_table[i];
+			struct hlist_node *node;
+			struct css_set *cg;
+
+			hlist_for_each_entry(cg, node, hhead, hlist)
+				link_css_set(&tmp_cg_links, cg, root_cgrp);
+		}
 		write_unlock(&css_set_lock);
 
 		free_cg_links(&tmp_cg_links);
@@ -2227,6 +2222,25 @@ static int cgroup_allow_attach(struct cgroup *cgrp, struct cgroup_taskset *tset)
 	return 0;
 }
 
+int subsys_cgroup_allow_attach(struct cgroup *cgrp, struct cgroup_taskset *tset)
+{
+	const struct cred *cred = current_cred(), *tcred;
+	struct task_struct *task;
+
+	if (capable(CAP_SYS_NICE))
+		return 0;
+
+	cgroup_taskset_for_each(task, cgrp, tset) {
+		tcred = __task_cred(task);
+
+		if (current != task && cred->euid != tcred->uid &&
+		    cred->euid != tcred->suid)
+			return -EACCES;
+	}
+
+	return 0;
+}
+
 /*
  * Find the task_struct of the task to attach by vpid and pass it along to the
  * function to attach either it or all tasks in its threadgroup. Will lock
@@ -2697,7 +2711,7 @@ static struct dentry *cgroup_lookup(struct inode *dir, struct dentry *dentry, st
  */
 static inline struct cftype *__file_cft(struct file *file)
 {
-	if (file_inode(file)->i_fop != &cgroup_file_operations)
+	if (file->f_dentry->d_inode->i_fop != &cgroup_file_operations)
 		return ERR_PTR(-EINVAL);
 	return __d_cft(file->f_dentry);
 }
@@ -3039,15 +3053,15 @@ static void cgroup_enable_task_cg_lists(void)
 	 */
 	read_lock(&tasklist_lock);
 	do_each_thread(g, p) {
+		task_lock(p);
 		/*
 		 * We should check if the process is exiting, otherwise
 		 * it will race with cgroup_exit() in that the list
 		 * entry won't be deleted though the process has exited.
 		 */
-		spin_lock_irq(&p->sighand->siglock);
 		if (!(p->flags & PF_EXITING) && list_empty(&p->cg_list))
 			list_add(&p->cg_list, &p->cgroups->tasks);
-		spin_unlock_irq(&p->sighand->siglock);
+		task_unlock(p);
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
 	write_unlock(&css_set_lock);
@@ -3163,13 +3177,14 @@ static inline int started_after(void *p1, void *p2)
 int cgroup_scan_tasks(struct cgroup_scanner *scan)
 {
 	int retval, i;
-	struct cgroup_iter it;
+	struct cgroup_iter it = {0, 0};
 	struct task_struct *p, *dropped;
 	/* Never dereference latest_task, since it's not refcounted */
 	struct task_struct *latest_task = NULL;
 	struct ptr_heap tmp_heap;
 	struct ptr_heap *heap;
 	struct timespec latest_time = { 0, 0 };
+	it.task = NULL;
 
 	if (scan->heap) {
 		/* The caller supplied our heap and pre-allocated its memory */
@@ -3399,7 +3414,7 @@ static struct cgroup_pidlist *cgroup_pidlist_find(struct cgroup *cgrp,
 {
 	struct cgroup_pidlist *l;
 	/* don't need task_nsproxy() if we're looking at ourself */
-	struct pid_namespace *ns = current->nsproxy->pid_ns;
+	struct pid_namespace *ns = task_active_pid_ns(current);
 
 	/*
 	 * We can't drop the pidlist_mutex before taking the l->mutex in case
@@ -3506,6 +3521,7 @@ int cgroupstats_build(struct cgroupstats *stats, struct dentry *dentry)
 	struct cgroup *cgrp;
 	struct cgroup_iter it;
 	struct task_struct *tsk;
+	it.task = NULL;
 
 	/*
 	 * Validate dentry by checking the superblock operations,
@@ -3844,7 +3860,7 @@ static int cgroup_write_event_control(struct cgroup *cgrp, struct cftype *cft,
 
 	/* the process need read permission on control file */
 	/* AV: shouldn't we check that it's been opened for read instead? */
-	ret = inode_permission(file_inode(cfile), MAY_READ);
+	ret = inode_permission(cfile->f_path.dentry->d_inode, MAY_READ);
 	if (ret < 0)
 		goto fail;
 
@@ -4137,6 +4153,8 @@ static long cgroup_create(struct cgroup *parent, struct dentry *dentry,
 	if (err < 0)
 		goto err_remove;
 
+	set_bit(CGRP_RELEASABLE, &parent->flags);
+
 	/* each css holds a ref to the cgroup's dentry */
 	for_each_subsys(root, ss)
 		dget(dentry);
@@ -4399,9 +4417,6 @@ int __init_or_module cgroup_load_subsys(struct cgroup_subsys *ss)
 {
 	int i;
 	struct cgroup_subsys_state *css;
-	struct hlist_node *tmp;
-	struct css_set *cg;
-	unsigned long key;
 
 	/* check name and function validity */
 	if (ss->name == NULL || strlen(ss->name) > MAX_CGROUP_TYPE_NAMELEN ||
@@ -4471,17 +4486,23 @@ int __init_or_module cgroup_load_subsys(struct cgroup_subsys *ss)
 	 * this is all done under the css_set_lock.
 	 */
 	write_lock(&css_set_lock);
-	hash_for_each_safe(css_set_table, i, tmp, cg, hlist) {
-		/* skip entries that we already rehashed */
-		if (cg->subsys[ss->subsys_id])
-			continue;
-		/* remove existing entry */
-		hash_del(&cg->hlist);
-		/* set new value */
-		cg->subsys[ss->subsys_id] = css;
-		/* recompute hash and restore entry */
-		key = css_set_hash(cg->subsys);
-		hash_add(css_set_table, &cg->hlist, key);
+	for (i = 0; i < CSS_SET_TABLE_SIZE; i++) {
+		struct css_set *cg;
+		struct hlist_node *node, *tmp;
+		struct hlist_head *bucket = &css_set_table[i], *new_bucket;
+
+		hlist_for_each_entry_safe(cg, node, tmp, bucket, hlist) {
+			/* skip entries that we already rehashed */
+			if (cg->subsys[ss->subsys_id])
+				continue;
+			/* remove existing entry */
+			hlist_del(&cg->hlist);
+			/* set new value */
+			cg->subsys[ss->subsys_id] = css;
+			/* recompute hash and restore entry */
+			new_bucket = css_set_hash(cg->subsys);
+			hlist_add_head(&cg->hlist, new_bucket);
+		}
 	}
 	write_unlock(&css_set_lock);
 
@@ -4504,6 +4525,7 @@ EXPORT_SYMBOL_GPL(cgroup_load_subsys);
 void cgroup_unload_subsys(struct cgroup_subsys *ss)
 {
 	struct cg_cgroup_link *link;
+	struct hlist_head *hhead;
 
 	BUG_ON(ss->module == NULL);
 
@@ -4528,13 +4550,12 @@ void cgroup_unload_subsys(struct cgroup_subsys *ss)
 	write_lock(&css_set_lock);
 	list_for_each_entry(link, &dummytop->css_sets, cgrp_link_list) {
 		struct css_set *cg = link->cg;
-		unsigned long key;
 
-		hash_del(&cg->hlist);
+		hlist_del(&cg->hlist);
 		BUG_ON(!cg->subsys[ss->subsys_id]);
 		cg->subsys[ss->subsys_id] = NULL;
-		key = css_set_hash(cg->subsys);
-		hash_add(css_set_table, &cg->hlist, key);
+		hhead = css_set_hash(cg->subsys);
+		hlist_add_head(&cg->hlist, hhead);
 	}
 	write_unlock(&css_set_lock);
 
@@ -4576,6 +4597,9 @@ int __init cgroup_init_early(void)
 	list_add(&init_css_set_link.cg_link_list,
 		 &init_css_set.cg_links);
 
+	for (i = 0; i < CSS_SET_TABLE_SIZE; i++)
+		INIT_HLIST_HEAD(&css_set_table[i]);
+
 	for (i = 0; i < CGROUP_SUBSYS_COUNT; i++) {
 		struct cgroup_subsys *ss = subsys[i];
 
@@ -4609,7 +4633,7 @@ int __init cgroup_init(void)
 {
 	int err;
 	int i;
-	unsigned long key;
+	struct hlist_head *hhead;
 
 	err = bdi_init(&cgroup_backing_dev_info);
 	if (err)
@@ -4628,8 +4652,8 @@ int __init cgroup_init(void)
 	}
 
 	/* Add init_css_set to the hash table */
-	key = css_set_hash(init_css_set.subsys);
-	hash_add(css_set_table, &init_css_set.hlist, key);
+	hhead = css_set_hash(init_css_set.subsys);
+	hlist_add_head(&init_css_set.hlist, hhead);
 	BUG_ON(!init_root_id(&rootnode));
 
 	cgroup_kobj = kobject_create_and_add("cgroup", fs_kobj);
@@ -4968,6 +4992,13 @@ static void check_for_release(struct cgroup *cgrp)
 			schedule_work(&release_agent_work);
 	}
 }
+
+void __css_get(struct cgroup_subsys_state *css, int count)
+{
+	atomic_add(count, &css->refcnt);
+	set_bit(CGRP_RELEASABLE, &css->cgroup->flags);
+}
+EXPORT_SYMBOL_GPL(__css_get);
 
 /* Caller must verify that the css is not for root cgroup */
 bool __css_tryget(struct cgroup_subsys_state *css)
@@ -5360,7 +5391,7 @@ struct cgroup_subsys_state *cgroup_css_from_dir(struct file *f, int id)
 	struct inode *inode;
 	struct cgroup_subsys_state *css;
 
-	inode = file_inode(f);
+	inode = f->f_dentry->d_inode;
 	/* check in cgroup filesystem dir */
 	if (inode->i_op != &cgroup_dir_inode_operations)
 		return ERR_PTR(-EBADF);
@@ -5454,7 +5485,7 @@ static int cgroup_css_links_read(struct cgroup *cont,
 		struct css_set *cg = link->cg;
 		struct task_struct *task;
 		int count = 0;
-		seq_printf(seq, "css_set %pK\n", cg);
+		seq_printf(seq, "css_set %p\n", cg);
 		list_for_each_entry(task, &cg->tasks, cg_list) {
 			if (count++ > MAX_TASKS_SHOWN_PER_CSS) {
 				seq_puts(seq, "  ...\n");
