@@ -1010,7 +1010,7 @@ static void cpuset_change_task_nodemask(struct task_struct *tsk,
 	task_lock(tsk);
 	/*
 	 * Determine if a loop is necessary if another thread is doing
-	 * read_mems_allowed_begin().  If at least one node remains unchanged and
+	 * get_mems_allowed().  If at least one node remains unchanged and
 	 * tsk does not have a mempolicy, then an empty nodemask will not be
 	 * possible when mems_allowed is larger than a word.
 	 */
@@ -2054,7 +2054,7 @@ static void
 scan_cpusets_upon_hotplug(struct cpuset *root, enum hotplug_event event)
 {
 	LIST_HEAD(queue);
-	struct cpuset *cp;					/* scans cpusets being updated */
+	struct cpuset *cp;		/* scans cpusets being updated */
 	static nodemask_t oldmems;	/* protected by cgroup_mutex */
 
 	list_add_tail((struct list_head *)&root->stack_list, &queue);
@@ -2086,7 +2086,7 @@ scan_cpusets_upon_hotplug(struct cpuset *root, enum hotplug_event event)
 
 			/* Continue past cpusets with all mems online */
 			if (nodes_subset(cp->mems_allowed,
-					node_states[N_HIGH_MEMORY]))
+					node_states[N_MEMORY]))
 				continue;
 
 			oldmems = cp->mems_allowed;
