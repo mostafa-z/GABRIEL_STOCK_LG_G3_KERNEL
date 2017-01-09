@@ -14,6 +14,14 @@
  */
 
 #ifdef CONFIG_CGROUP_BFQIO
+
+static DEFINE_MUTEX(bfqio_mutex);
+
+static bool bfqio_is_removed(struct cgroup *cgroup)
+{
+	return test_bit(CGRP_REMOVED, &cgroup->flags);
+}
+
 static struct bfqio_cgroup bfqio_root_cgroup = {
 	.weight = BFQ_DEFAULT_GRP_WEIGHT,
 	.ioprio = BFQ_DEFAULT_GRP_IOPRIO,
@@ -633,18 +641,19 @@ static u64 bfqio_cgroup_##__VAR##_read(struct cgroup *cgroup,		\
 				       struct cftype *cftype)		\
 {									\
 	struct bfqio_cgroup *bgrp;					\
-	u64 ret;							\
+	u64 ret = -ENODEV;						\
 									\
-	if (!cgroup_lock_live_group(cgroup))				\
-		return -ENODEV;						\
+	mutex_lock(&bfqio_mutex);					\
+	if (bfqio_is_removed(cgroup))					\
+		goto out_unlock;					\
 									\
 	bgrp = cgroup_to_bfqio(cgroup);					\
 	spin_lock_irq(&bgrp->lock);					\
 	ret = bgrp->__VAR;						\
 	spin_unlock_irq(&bgrp->lock);					\
 									\
-	cgroup_unlock();						\
-									\
+out_unlock:								\
+	mutex_unlock(&bfqio_mutex);					\
 	return ret;							\
 }
 
@@ -660,19 +669,23 @@ static int bfqio_cgroup_##__VAR##_write(struct cgroup *cgroup,		\
 {									\
 	struct bfqio_cgroup *bgrp;					\
 	struct bfq_group *bfqg;						\
+	int ret = -EINVAL;						\
 									\
 	if (val < (__MIN) || val > (__MAX))				\
-		return -EINVAL;						\
+		return ret;						\
 									\
-	if (!cgroup_lock_live_group(cgroup))				\
-		return -ENODEV;						\
+	ret = -ENODEV;							\
+	mutex_lock(&bfqio_mutex);					\
+	if (bfqio_is_removed(cgroup))					\
+		goto out_unlock;					\
+	ret = 0;							\
 									\
 	bgrp = cgroup_to_bfqio(cgroup);					\
 									\
 	spin_lock_irq(&bgrp->lock);					\
 	bgrp->__VAR = (unsigned short)val;				\
 	hlist_for_each_entry(bfqg, &bgrp->group_data, group_node) {	\
-		/*                                                      \
+		/*							\
 		 * Setting the ioprio_changed flag of the entity        \
 		 * to 1 with new_##__VAR == ##__VAR would re-set        \
 		 * the value of the weight to its ioprio mapping.       \
@@ -697,13 +710,13 @@ static int bfqio_cgroup_##__VAR##_write(struct cgroup *cgroup,		\
 			 */						\
 			smp_wmb();                                      \
 			bfqg->entity.ioprio_changed = 1;                \
-		}                                                       \
+		}							\
 	}								\
 	spin_unlock_irq(&bgrp->lock);					\
 									\
-	cgroup_unlock();						\
-									\
-	return 0;							\
+out_unlock:								\
+	mutex_unlock(&bfqio_mutex);					\
+	return ret;							\
 }
 
 STORE_FUNCTION(weight, BFQ_MIN_WEIGHT, BFQ_MAX_WEIGHT);
@@ -727,6 +740,7 @@ static struct cftype bfqio_files[] = {
 		.read_u64 = bfqio_cgroup_ioprio_class_read,
 		.write_u64 = bfqio_cgroup_ioprio_class_write,
 	},
+	{ },	/* terminate */
 };
 
 static struct cgroup_subsys_state *bfqio_create(struct cgroup *cgroup)
@@ -835,10 +849,10 @@ static void bfqio_destroy(struct cgroup *cgroup)
 
 struct cgroup_subsys bfqio_subsys = {
 	.name = "bfqio",
-	.create = bfqio_create,
+	.css_alloc = bfqio_create,
 	.can_attach = bfqio_can_attach,
 	.attach = bfqio_attach,
-	.destroy = bfqio_destroy,
+	.css_free = bfqio_destroy,
 	.subsys_id = bfqio_subsys_id,
 	.base_cftypes = bfqio_files,
 };
