@@ -2245,14 +2245,14 @@ static ssize_t store_ime_drumming_status(struct i2c_client *client, const char *
 	case IME_OFF:
 		if(ime_stat) {
 			ime_stat = 0;
-			TOUCH_INFO_MSG("%s : IME OFF\n",__func__);
+//			TOUCH_INFO_MSG("%s : IME OFF\n",__func__);
 			queue_delayed_work(touch_wq, &ts->work_ime_drumming, msecs_to_jiffies(10));
 			}
 		break;
 	case IME_ON:
 		if(!ime_stat) {
 			ime_stat = 1;
-			TOUCH_INFO_MSG("%s : IME ON\n",__func__);
+//			TOUCH_INFO_MSG("%s : IME ON\n",__func__);
 			queue_delayed_work(touch_wq, &ts->work_ime_drumming, msecs_to_jiffies(10));
 			}
 		break;
