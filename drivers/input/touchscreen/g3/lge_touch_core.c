@@ -2209,7 +2209,7 @@ static ssize_t store_keyguard_info(struct i2c_client *client, const char *buf, s
 	switch(value) {
 	case KEYGUARD_RESERVED:
 		lockscreen_stat = 0;
-		TOUCH_INFO_MSG("%s : Lockscreen unlocked, lockscreen_stat = %d\n", __func__, lockscreen_stat);
+//		TOUCH_INFO_MSG("%s : Lockscreen unlocked, lockscreen_stat = %d\n", __func__, lockscreen_stat);
 		if(ime_stat) {
 			TOUCH_INFO_MSG("%s : IME ON , Lockscreen unlocked\n", __func__);
 			queue_delayed_work(touch_wq, &ts->work_ime_drumming, msecs_to_jiffies(10));
@@ -2217,7 +2217,7 @@ static ssize_t store_keyguard_info(struct i2c_client *client, const char *buf, s
 		break;
 	case KEYGUARD_ENABLE:
 		lockscreen_stat = 1;
-		TOUCH_INFO_MSG("%s : Lockscreen locked, lockscreen_stat = %d\n", __func__, lockscreen_stat);
+//		TOUCH_INFO_MSG("%s : Lockscreen locked, lockscreen_stat = %d\n", __func__, lockscreen_stat);
 		break;
 	default:
 		break;
