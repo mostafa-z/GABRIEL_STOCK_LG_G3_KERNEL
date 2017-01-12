@@ -7,7 +7,7 @@ obj-y   += proc.o
 proc-y			:= nommu.o task_nommu.o
 proc-$(CONFIG_MMU)	:= task_mmu.o
 
-proc-y       += inode.o root.o base.o generic.o array.o \
+proc-y       += inode.o root.o base.o generic.o array.o
 proc-$(CONFIG_TTY)      += proc_tty.o
 proc-y	+= cmdline.o
 proc-y	+= consoles.o
