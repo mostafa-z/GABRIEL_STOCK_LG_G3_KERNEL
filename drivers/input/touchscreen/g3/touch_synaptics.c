@@ -3735,7 +3735,7 @@ static void synapitcs_change_ime_status(struct i2c_client *client, int ime_statu
 	touch_i2c_read(ts->client, drumming_address, 5, udata);
 
 	if (ime_status) {
-		TOUCH_INFO_MSG("%s : IME ON \n",__func__);
+//		TOUCH_INFO_MSG("%s : IME ON \n",__func__);
 		udata[3] = 0x08;/*Drumming Acceleration Threshold*/
 		udata[4] = 0x05;/*Minimum Drumming Separation*/
 		if(touch_i2c_write(ts->client, drumming_address, 5, udata) < 0) {
@@ -3747,7 +3747,7 @@ static void synapitcs_change_ime_status(struct i2c_client *client, int ime_statu
  		if (touch_i2c_write(ts->client, drumming_address, 5, udata) < 0) {
 			TOUCH_ERR_MSG("%s : Touch i2c write fail \n", __func__);
  		}
-		TOUCH_INFO_MSG("%s : IME OFF\n",__func__);
+//		TOUCH_INFO_MSG("%s : IME OFF\n",__func__);
 	 }
 	 return;
 }
