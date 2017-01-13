@@ -515,6 +515,15 @@ static inline void init_hrtick(void)
 #endif	/* CONFIG_SCHED_HRTICK */
 
 /*
+ * resched_curr - mark rq's current task 'to be rescheduled now'.
+ *
+ * On UP this means the setting of the need_resched flag, on SMP it
+ * might also involve a cross-CPU call to trigger the scheduler on
+ * the target CPU.
+ */
+#ifdef CONFIG_SMP
+
+/*
  * cmpxchg based fetch_or, macro so it works for different integer types
  */
 #define fetch_or(ptr, val)						\
