@@ -94,6 +94,18 @@ config CPU_FREQ_DEFAULT_GOV_ONDEMAND
 	  governor. If unsure have a look at the help section of the
 	  driver. Fallback governor will be the performance governor.
 
+config CPU_FREQ_DEFAULT_GOV_ONDEMAND_LG
+	bool "ondemand_lg"
+	select CPU_FREQ_GOV_ONDEMAND_LG
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+
+config CPU_FREQ_DEFAULT_GOV_ONDEMANDX
+	bool "ondemandx"
+	select CPU_FREQ_GOV_ONDEMANDX
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+
 config CPU_FREQ_DEFAULT_GOV_SLIM
 	bool "slim"
 	select CPU_FREQ_GOV_SLIM
@@ -130,6 +142,16 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  you to get a full dynamic cpu frequency capable system by simply
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
+
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVE_LG
+	bool "interactive_lg"
+	select CPU_FREQ_GOV_INTERACTIVE_LG
+	help
+
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
+	bool "interactivex"
+	select CPU_FREQ_GOV_INTERACTIVEX
+	help
 
 config CPU_FREQ_DEFAULT_GOV_INTELLIDEMAND
 
@@ -294,6 +316,18 @@ config CPU_FREQ_GOV_ONDEMAND
 
 	  If in doubt, say N.
 
+config CPU_FREQ_GOV_ONDEMAND_LG
+	tristate "'ondemand_lg' cpufreq policy governor"
+	select CPU_FREQ_TABLE
+	select CPU_FREQ_GOV_COMMON
+	default y
+
+config CPU_FREQ_GOV_ONDEMANDX
+	tristate "'ondemandx' cpufreq policy governor"
+	select CPU_FREQ_TABLE
+	select CPU_FREQ_GOV_COMMON
+	default y
+
 config CPU_FREQ_GOV_SLIM
 	tristate "'slim' cpufreq policy governor"
 	select CPU_FREQ_TABLE
@@ -323,6 +357,15 @@ config CPU_FREQ_GOV_INTERACTIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_INTERACTIVE_LG
+	tristate "'interactive_lg' cpufreq policy governor"
+	default y
+
+config CPU_FREQ_GOV_INTERACTIVEX
+	tristate "'interactivex' cpufreq policy governor"
+	default y
+
 config LGE_LOW_BATT_LIMIT
 	tristate "to prevent UVLO at low voltage"
 	depends on CPU_FREQ
