@@ -164,6 +164,9 @@ static void do_input_boost(struct work_struct *work)
 		return;
 	}
 
+	if (!input_boost_ms)
+		return;
+
 	cancel_delayed_work_sync(&input_boost_rem);
 
 	if (nr_cpus <= 0)
