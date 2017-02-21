@@ -461,6 +461,12 @@ extern struct cpufreq_governor cpufreq_gov_bioshock;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_NIGHTMARE)
 extern struct cpufreq_governor cpufreq_gov_nightmare;
 #define CPUFREQ_DEFAULT_GOVERNOR (&cpufreq_gov_nightmare)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_DARKNESS)
+extern struct cpufreq_governor cpufreq_gov_darkness;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_darkness)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_ALUCARD)
+extern struct cpufreq_governor cpufreq_gov_alucard;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_alucard)
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_PEGASUSQ)
 extern struct cpufreq_governor cpufreq_gov_pegasusq;
 #define CPUFREQ_DEFAULT_GOVERNOR  (&cpufreq_gov_pegasusq)
@@ -476,9 +482,6 @@ extern struct cpufreq_governor cpufreq_gov_yankactive;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_INTEL)
 extern struct cpufreq_governor cpufreq_gov_intel;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_intel)
-#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_ALUCARD)
-extern struct cpufreq_governor cpufreq_gov_alucard;
-#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_alucard)
 #endif
 
 
