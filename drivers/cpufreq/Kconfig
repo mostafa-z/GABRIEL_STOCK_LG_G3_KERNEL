@@ -239,6 +239,16 @@ config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
 	select CPU_FREQ_GOV_NIGHTMARE
 	help
 
+config CPU_FREQ_DEFAULT_GOV_DARKNESS
+	bool "darkness"
+	select CPU_FREQ_GOV_DARKNESS
+	help
+
+config CPU_FREQ_DEFAULT_GOV_ALUCARD
+	bool "alucard"
+	select CPU_FREQ_GOV_ALUCARD
+	help
+
 config CPU_FREQ_DEFAULT_GOV_PEGASUSQ
 	bool "pegasusq"
 	select CPU_FREQ_GOV_PEGASUSQ
@@ -275,11 +285,6 @@ config CPU_FREQ_DEFAULT_GOV_INTEL
 	  loading your cpufreq low-level hardware driver, using the
 	  'intel' governor for better perfromance and power with Intel
 	  mobile platforms.
-
-config CPU_FREQ_DEFAULT_GOV_ALUCARD
-	bool "alucard"
-	select CPU_FREQ_GOV_ALUCARD
-	help
 
 config CPU_FREQ_DEFAULT_GOV_LIONFISH
 	bool "lionfish"
@@ -528,7 +533,18 @@ config CPU_FREQ_GOV_BIOSHOCK
 config CPU_FREQ_GOV_NIGHTMARE
 	tristate "'nightmare' cpufreq governor"
 	depends on CPU_FREQ
+	default y
 	
+config CPU_FREQ_GOV_DARKNESS
+	tristate "'darkness' cpufreq governor"
+	depends on CPU_FREQ
+	default y
+
+config CPU_FREQ_GOV_ALUCARD
+	tristate "'alucard' cpufreq governor"
+	depends on CPU_FREQ
+	default y
+
 config CPU_FREQ_GOV_PEGASUSQ
 	tristate "'pegasusq' cpufreq policy governor"
 
@@ -566,10 +582,6 @@ config CPU_FREQ_GOV_INTEL
 	  module will be called cpufreq_intel.
 	  For details, take a look at linux/Documentation/cpu-freq.
 	  If in doubt, say N. 
-
-config CPU_FREQ_GOV_ALUCARD
-	tristate "'alucard' cpufreq governor"
-	depends on CPU_FREQ
 
 config CPU_FREQ_GOV_LIONFISH
 	tristate "'lionfish' governor"
