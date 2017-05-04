@@ -3067,7 +3067,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		mdss_mdp_overlay_kickoff(mfd, NULL);
 	}
 
-	pr_info("fb%d BLANK +", mfd->index);
+	pr_debug("fb%d BLANK +", mfd->index);
 
 	/*
 	 * If retire fences are still active wait for a vsync time
