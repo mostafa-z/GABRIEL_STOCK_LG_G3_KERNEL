@@ -53,7 +53,7 @@ struct cipher_testvec {
 	char *result;
 	unsigned short tap[MAX_TAP];
 	int np;
-	bool fail;
+	unsigned char fail;
 	unsigned char wk; /* weak key flag */
 	unsigned char klen;
 	unsigned short ilen;
@@ -70,7 +70,7 @@ struct aead_testvec {
 	unsigned char atap[MAX_TAP];
 	int np;
 	int anp;
-	bool fail;
+	unsigned char fail;
 	unsigned char novrfy;	/* ccm dec verification failure expected */
 	unsigned char wk; /* weak key flag */
 	unsigned char klen;
@@ -1312,11 +1312,7 @@ static struct hash_testvec hmac_sha1_tv_template[] = {
 		.plaintext = "Hi There",
 		.psize	= 8,
 		.digest	= "\xb6\x17\x31\x86\x55\x05\x72\x64"
-#if FIPS_FUNC_TEST == 2
-			  "\xe3\x8b\xc0\xb6\xfb\x37\x8c\x8e\xf1"
-#else
 			  "\xe2\x8b\xc0\xb6\xfb\x37\x8c\x8e\xf1"
-#endif
 			  "\x46\xbe",
 	}, {
 		.key	= "Jefe",
@@ -1509,7 +1505,11 @@ static struct hash_testvec hmac_sha224_tv_template[] = {
 
 static struct hash_testvec hmac_sha256_tv_template[] = {
 	{
+#if FIPS_CRYPTO_TEST == 2
+		.key	= "\x01\x02\x03\x04\x05\x06\x07\x07"
+#else
 		.key	= "\x01\x02\x03\x04\x05\x06\x07\x08"
+#endif
 			  "\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
 			  "\x11\x12\x13\x14\x15\x16\x17\x18"
 			  "\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20",
@@ -2039,7 +2039,7 @@ static struct cipher_testvec des_enc_tv_template[] = {
 			  "\xb4\x99\x26\xf7\x1f\xe1\xd4\x90",
 		.rlen	= 24,
 	}, { /* Weak key */
-		.fail	= true,
+		.fail	= 1,
 		.wk	= 1,
 		.key	= "\x01\x01\x01\x01\x01\x01\x01\x01",
 		.klen	= 8,
@@ -6137,11 +6137,7 @@ static struct cipher_testvec cast6_dec_tv_template[] = {
 static struct cipher_testvec aes_enc_tv_template[] = {
 	{ /* From FIPS-197 */
 		.key	= "\x00\x01\x02\x03\x04\x05\x06\x07"
-#if FIPS_FUNC_TEST == 1
-			  "\x08\x09\x0a\x0b\x0c\x0d\x0e\x01",
-#else
 			  "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
-#endif
 		.klen	= 16,
 		.input	= "\x00\x11\x22\x33\x44\x55\x66\x77"
 			  "\x88\x99\xaa\xbb\xcc\xdd\xee\xff",
@@ -6215,7 +6211,11 @@ static struct cipher_testvec aes_dec_tv_template[] = {
 static struct cipher_testvec aes_cbc_enc_tv_template[] = {
 	{ /* From RFC 3602 */
 		.key    = "\x06\xa9\x21\x40\x36\xb8\xa1\x5b"
+#if FIPS_CRYPTO_TEST == 1
+			  "\x51\x2e\x03\xd5\x34\x12\x00\x05",
+#else
 			  "\x51\x2e\x03\xd5\x34\x12\x00\x06",
+#endif
 		.klen   = 16,
 		.iv	= "\x3d\xaf\xba\x42\x9d\x9e\xb4\x30"
 			  "\xb4\x22\xda\x80\x2c\x9f\xac\x41",
@@ -14337,7 +14337,7 @@ struct comp_testvec {
 };
 
 struct pcomp_testvec {
-	const void *params;
+	void *params;
 	unsigned int paramsize;
 	int inlen, outlen;
 	char input[COMP_BUF_SIZE];
