@@ -40,14 +40,6 @@ enum pm_qos_flags_status {
 #define PM_QOS_DVFS_LAT_DEFAULT_VALUE	(2000 * USEC_PER_SEC)
 #define PM_QOS_DEV_LAT_DEFAULT_VALUE		0
 
-enum pm_qos_req_type {
-	PM_QOS_REQ_ALL_CORES = 0,
-	PM_QOS_REQ_AFFINE_CORES,
-#ifdef CONFIG_SMP
-	PM_QOS_REQ_AFFINE_IRQ,
-#endif
-};
-
 #define PM_QOS_FLAG_NO_POWER_OFF	(1 << 0)
 #define PM_QOS_FLAG_REMOTE_WAKEUP	(1 << 1)
 
@@ -124,6 +116,7 @@ struct dev_pm_qos {
 	struct dev_pm_qos_request *flags_req;
 };
 
+/* Action requested to pm_qos_update_target */
 enum pm_qos_req_action {
 	PM_QOS_ADD_REQ,		/* Add a new request */
 	PM_QOS_UPDATE_REQ,	/* Update an existing request */
@@ -132,7 +125,7 @@ enum pm_qos_req_action {
 
 static inline int dev_pm_qos_request_active(struct dev_pm_qos_request *req)
 {
-	return req->dev != 0;
+	return req->dev != NULL;
 }
 
 int pm_qos_update_target(struct pm_qos_constraints *c,
