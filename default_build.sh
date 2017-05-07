@@ -33,6 +33,7 @@ COLOR_RED="\033[0;31m"
 COLOR_GREEN="\033[1;32m"
 COLOR_NEUTRAL="\033[0m"
 LOG=(WORKING_DIR/package/compile.log);
+TCGAB=(TOOLCHAIN/gabriel-ctng/bin/arm-eabi-);
 TCGL480=(TOOLCHAIN/google-4.8/bin/arm-eabi-);
 TCA493=(TOOLCHAIN/architoolchain-4.9/bin/arm-architoolchain-linux-gnueabi-);
 TCA510=(TOOLCHAIN/architoolchain-5.1/bin/arm-architoolchain-linux-gnueabihf-);
@@ -347,8 +348,11 @@ fi;
 }
 
 echo "Select Toolchain ... ";
-select CHOICE in Google-4.8.0 ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X DORI-5.4.X DORI-6.1.X DORI-6.2.X LINARO-4.9.x LINARO-5.3.x LINARO-6.1.x LINARO-6.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
+select CHOICE in Gabriel-ct.ng Google-4.8.0 ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X DORI-5.4.X DORI-6.1.X DORI-6.2.X LINARO-4.9.x LINARO-5.3.x LINARO-6.1.x LINARO-6.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
 	case "$CHOICE" in
+		"Gabriel-ct.ng")
+			TC=$TCGAB;
+			break;;
 		"Google-4.8.0")
 			TC=$TCGL480;
 			break;;
