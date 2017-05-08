@@ -133,7 +133,8 @@ LOG_CHECK()
 # refresh for new build
 CLEANUP()
 {
-	make clean mrproper && git clean -f;
+	make ARCH=arm mrproper;
+	make clean;
 
 # force regeneration of .dtb and zImage files for every compile
 	rm -f arch/arm/boot/*.dtb
