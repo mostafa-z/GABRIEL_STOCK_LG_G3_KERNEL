@@ -10,8 +10,9 @@ LANG=C
 # folder structure
 #------------------------------------
 #	root (contains kernel source and these directories as well)
-#		/TOOLCHAIN
-#					/tc-name/bin/arm-eabi- or etc
+#		/android-toolchain
+#					/bin/arm-eabi- or etc
+#					/arm-XXX-linux-gnueabi contains sysroot folder
 #		/WORKING_DIR (available in mm_ramdisk git)
 #					/D850/zImage.dtb,... (extracted from boot.img)
 #					/D850/ramdisk
@@ -34,25 +35,8 @@ COLOR_RED="\033[0;31m"
 COLOR_GREEN="\033[1;32m"
 COLOR_NEUTRAL="\033[0m"
 LOG=(WORKING_DIR/package/compile.log);
-TCGAB=(TOOLCHAIN/gabriel-ctng/bin/arm-eabi-);
-TCGL480=(TOOLCHAIN/google-4.8/bin/arm-eabi-);
-TCA493=(TOOLCHAIN/architoolchain-4.9/bin/arm-architoolchain-linux-gnueabi-);
-TCA510=(TOOLCHAIN/architoolchain-5.1/bin/arm-architoolchain-linux-gnueabihf-);
-TCA520=(TOOLCHAIN/architoolchain-5.2/bin/arm-architoolchain-linux-gnueabihf-);
-TCUB511=(TOOLCHAIN/UBERTC-5.1/bin/arm-eabi-);
-TCUB520=(TOOLCHAIN/UBERTC-5.2/bin/arm-eabi-);
-TCUB530=(TOOLCHAIN/UBERTC-5.3/bin/arm-eabi-);
-TCUB600=(TOOLCHAIN/UBERTC-6.0/bin/arm-eabi-);
-TCUB700=(TOOLCHAIN/UBERTC-7.0/bin/arm-eabi-);
-TCDR530=(TOOLCHAIN/TC-5.3-Dorimanx/bin/arm-eabi-);
-TCDR540=(TOOLCHAIN/TC-5.4-Dorimanx/bin/arm-eabi-);
-TCDR610=(TOOLCHAIN/TC-6.1-Dorimanx/bin/arm-eabi-);
-TCDR620=(TOOLCHAIN/TC-6.2-Dorimanx/bin/arm-eabi-);
-TCLN494=(TOOLCHAIN/linaro-4.9.4-dorimanx/bin/arm-LG-linux-gnueabi-);
-TCLN490=(TOOLCHAIN/linaro-4.9/bin/arm-eabi-);
-TCLN530=(TOOLCHAIN/linaro-5.3/bin/arm-eabi-);
-TCLN610=(TOOLCHAIN/linaro-6.1/bin/arm-eabi-);
-TCLN630=(TOOLCHAIN/linaro-6.3/bin/arm-eabi-);
+TC=(android-toolchain/bin/arm-eabi-);
+SYSROOT=(android-toolchain/arm-LG-linux-gnueabihf/sysroot/);
 KD=$(readlink -f .);
 WD=(WORKING_DIR);
 RK=(READY_KERNEL);
@@ -60,7 +44,7 @@ BOOT=(arch/arm/boot);
 DTC=(scripts/dtc);
 DCONF=(arch/arm/configs);
 STOCK_DEF=(g3-global_com-perf_defconfig);
-NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/gabriel_d855_defconfig | cut -c 23-28);
+NAME=Gabriel-$(grep "CONFIG_LOCALVERSION=" arch/arm/configs/gabriel_d855_defconfig | cut -c 25-28);
 
 export PATH=$PATH:tools/lz4demo
 #===============================================================================
@@ -172,6 +156,8 @@ CLEANUP()
 	for i in $(find "$KD"/ -name "compile.log"); do
 		rm -fv "$i";
 	done;
+
+	git checkout android-toolchain/
 }
 
 #===============================================================================
@@ -203,8 +189,8 @@ NR_CPUS;
 	make ARCH=arm CROSS_COMPILE=$TC $CUSTOM_DEF
 	echo -e $COLOR_GREEN"\nI'm coocking, make a coffee ..." $COLOR_NEUTRAL
 	echo ""
-	make ARCH=arm CROSS_COMPILE=$TC zImage-dtb -j $NR_CPUS | grep :
-	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
+	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
@@ -232,13 +218,13 @@ NR_CPUS;
 	echo -e "CPU : compile with "$NR_CPUS"-way multitask processing" >> $LOG
 	echo -e "Toolchain: "$TC >> $LOG
 
+	TIMESTAMP1=$(date +%s)
 	make ARCH=arm CROSS_COMPILE=$TC $CUSTOM_DEF
 	make ARCH=arm CROSS_COMPILE=$TC nconfig
 	echo -e $COLOR_GREEN"\nI'm coocking, make a coffee ..." $COLOR_NEUTRAL
 	echo ""
-	TIMESTAMP1=$(date +%s)
-	make ARCH=arm CROSS_COMPILE=$TC zImage-dtb -j $NR_CPUS | grep :
-	make ARCH=arm CROSS_COMPILE=$TC modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
+	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
@@ -349,74 +335,6 @@ else
 fi;
 }
 
-echo "Select Toolchain ... ";
-select CHOICE in Gabriel-ct.ng Google-4.8.0 ARCHI-4.9.3 ARCHI-5.1.0 ARCHI-5.2.0 UBER-5.1.1 UBER-5.2.0 UBER-5.3.0 UBER-6.0.0 UBER-7.0.0 DORI-LINARO-4.9.4 DORI-5.3.X DORI-5.4.X DORI-6.1.X DORI-6.2.X LINARO-4.9.x LINARO-5.3.x LINARO-6.1.x LINARO-6.3.x LAST_ONE CLEANUP CONTINUE_BUILD; do
-	case "$CHOICE" in
-		"Gabriel-ct.ng")
-			TC=$TCGAB;
-			break;;
-		"Google-4.8.0")
-			TC=$TCGL480;
-			break;;
-		"ARCHI-4.9.3")
-			TC=$TCA493;
-			break;;
-		"ARCHI-5.1.0")
-			TC=$TCA510;
-			break;;
-		"ARCHI-5.2.0")
-			TC=$TCA520;
-			break;;
-		"UBER-5.1.1")
-			TC=$TCUB511;
-			break;;
-		"UBER-5.2.0")
-			TC=$TCUB520;
-			break;;
-		"UBER-5.3.0")
-			TC=$TCUB530;
-			break;;
-		"UBER-6.0.0")
-			TC=$TCUB600;
-			break;;
-		"UBER-7.0.0")
-			TC=$TCUB700;
-			break;;
-		"DORI-LINARO-4.9.4")
-			TC=$TCLN494;
-			break;;
-		"DORI-5.3.X")
-			TC=$TCDR530;
-			break;;
-		"DORI-5.4.X")
-			TC=$TCDR540;
-			break;;
-		"DORI-6.1.X")
-			TC=$TCDR610;
-			break;;
-		"DORI-6.2.X")
-			TC=$TCDR620;
-			break;;
-		"LINARO-4.9.x")
-			TC=$TCLN490;
-			break;;
-		"LINARO-5.3.x")
-			TC=$TCLN530;
-			break;;
-		"LINARO-6.1.x")
-			TC=$TCLN610;
-			break;;
-		"LINARO-6.3.x")
-			TC=$TCLN630;
-			break;;
-		"CONTINUE_BUILD")
-			CONTINUE_BUILD;
-			break;;
-		"CLEANUP")
-			CLEANUP;
-			break;;
-	esac;
-done;
 echo "What to do What not to do ?!";
 select CHOICE in D850 D851 D852 D855_16 D855_32 VS985 LS990 F400 CONTINUE_BUILD D855_STOCK_DEF D855_NCONF ALL; do
 	case "$CHOICE" in
