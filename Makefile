@@ -380,6 +380,10 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-security -Wno-bool-compare \
 		   -Wno-shift-overflow -Wno-tautological-compare -Wno-array-bounds \
            -Wno-unused-const-variable -Wno-misleading-indentation \
+		   -Wno-bool-operation -Wno-nonnull -Wno-switch-unreachable \
+		   -Wno-format-truncation -Wno-format-overflow \
+		   -Wno-duplicate-decl-specifier \
+		   -Wno-memset-elt-size -Wno-int-in-bool-context \
 		   -fno-delete-null-pointer-checks \
 		   -mcpu=cortex-a15 -mtune=cortex-a15 \
 		   -std=gnu89 -fno-pic
