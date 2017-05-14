@@ -55,7 +55,7 @@ def get_kernel_size(image_name):
 
 def bumped(image_data):
     d = binascii.hexlify(image_data[-1024:])
-    return d.endswith(lg_magic) or d.startswith(lg_magic)
+    return d.endswith(str.encode(lg_magic)) or d.startswith(str.encode(lg_magic))
 
 
 def pair_reverse(s):
@@ -72,7 +72,7 @@ def get_page_size(image_name):
 
 def get_size_from_kernel(f_image, page_size, seek_size):
     f_image.seek(seek_size, 0)
-    return (int(pair_reverse(binascii.hexlify(f_image.read(4))), 16) / page_size) * page_size
+    return (int(pair_reverse(binascii.hexlify(f_image.read(4))), 16) // page_size) * page_size
 
 
 def pad_image(image_name):
