@@ -189,8 +189,8 @@ NR_CPUS;
 	make ARCH=arm CROSS_COMPILE=$TC $CUSTOM_DEF
 	echo -e $COLOR_GREEN"\nI'm coocking, make a coffee ..." $COLOR_NEUTRAL
 	echo ""
-	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
-	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC CC='ccache '${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
+	make ARCH=arm CROSS_COMPILE=$TC CC='ccache '${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
@@ -223,8 +223,8 @@ NR_CPUS;
 	make ARCH=arm CROSS_COMPILE=$TC nconfig
 	echo -e $COLOR_GREEN"\nI'm coocking, make a coffee ..." $COLOR_NEUTRAL
 	echo ""
-	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
-	make ARCH=arm CROSS_COMPILE=$TC CC=''${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
+	make ARCH=arm CROSS_COMPILE=$TC CC='ccache '${TC}gcc' --sysroot='$SYSROOT'' zImage-dtb -j $NR_CPUS | grep :
+	make ARCH=arm CROSS_COMPILE=$TC CC='ccache '${TC}gcc' --sysroot='$SYSROOT'' modules -j $NR_CPUS | grep fail
 	clear
 
 POST_BUILD >> $LOG
