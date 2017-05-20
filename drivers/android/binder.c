@@ -619,7 +619,7 @@ static int binder_update_page_range(struct binder_proc *proc, int allocate,
 		goto free_range;
 
 	if (vma == NULL) {
-		pr_err("%d: binder_alloc_buf failed to map pages in userspace, no vma\n",
+		pr_debug("%d: binder_alloc_buf failed to map pages in userspace, no vma\n",
 			proc->pid);
 		goto err_no_vma;
 	}
@@ -1499,7 +1499,7 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 			ref = binder_get_ref(proc, fp->handle,
 					     hdr->type == BINDER_TYPE_HANDLE);
 			if (ref == NULL) {
-				pr_err("transaction release %d bad handle %d\n",
+				pr_debug("transaction release %d bad handle %d\n",
 				 debug_id, fp->handle);
 				break;
 			}
