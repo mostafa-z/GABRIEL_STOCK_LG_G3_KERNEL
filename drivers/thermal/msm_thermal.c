@@ -904,7 +904,7 @@ static void __ref do_freq_control(long temp)
 		cpus[cpu].limited_max_freq = max_freq;
 		if (cpu_online(cpu)) {
 			if (cpufreq_update_policy(cpu))
-				pr_info("Unable to update policy for cpu:%d\n", cpu);
+				pr_debug("Unable to update policy for cpu:%d\n", cpu);
 		}
 	}
 }
@@ -1438,7 +1438,7 @@ static void __ref disable_msm_thermal(void)
 		cpus[cpu].limited_min_freq = 0;
 		if (cpu_online(cpu)) {
 			if (cpufreq_update_policy(cpu))
-				pr_info("Unable to update policy for cpu:%d\n", cpu);
+				pr_debug("Unable to update policy for cpu:%d\n", cpu);
 		}
 	}
 	put_online_cpus();
