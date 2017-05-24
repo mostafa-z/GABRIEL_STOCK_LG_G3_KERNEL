@@ -714,13 +714,13 @@ static ssize_t anx7816_enable_irq_store(struct device *dev, struct device_attrib
 }
 
 static struct device_attribute slimport_device_attrs[] = {
-	__ATTR(rev_check, S_IRUGO | S_IWUSR, NULL, slimport7816_rev_check_store),
+	__ATTR(rev_check, S_IWUSR, NULL, slimport7816_rev_check_store),
 	__ATTR(hdcp_disable, S_IRUGO | S_IWUSR, sp_hdcp_feature_show, sp_hdcp_feature_store),
 	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, sp_external_block_show, sp_external_block_store),
-	__ATTR(hdmi_vga, S_IRUGO | S_IWUSR, slimport_sysfs_rda_hdmi_vga, NULL),
-	__ATTR(hdcp_support, S_IRUGO | S_IWUSR, slimport_sysfs_rda_hdcp_support, NULL),
-	__ATTR(anx7730, S_IRUGO | S_IWUSR, NULL, anx7730_write_reg_store),
-	__ATTR(anx7816, S_IRUGO | S_IWUSR, NULL, anx7816_write_reg_store),
+	__ATTR(hdmi_vga, S_IRUGO, slimport_sysfs_rda_hdmi_vga, NULL),
+	__ATTR(hdcp_support, S_IRUGO, slimport_sysfs_rda_hdcp_support, NULL),
+	__ATTR(anx7730, S_IWUSR, NULL, anx7730_write_reg_store),
+	__ATTR(anx7816, S_IWUSR, NULL, anx7816_write_reg_store),
 	__ATTR(enable_irq, S_IRUGO | S_IWUSR, anx7816_enable_irq_show,
 			anx7816_enable_irq_store),
 #ifdef SP_REGISTER_SET_TEST /*slimport test */
