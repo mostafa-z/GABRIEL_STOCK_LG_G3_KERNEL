@@ -157,7 +157,7 @@ static bool migrate_one_irq(struct irq_desc *desc)
 		ret = true;
 	}
 
-	__irq_set_affinity_locked(d, affinity);
+	irq_set_affinity_locked(d, affinity, 0);
 
 	return ret;
 }
