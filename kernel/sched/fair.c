@@ -2498,29 +2498,6 @@ void idle_enter_fair(struct rq *this_rq)
 	update_rq_runnable_avg(this_rq, 1);
 }
 
-	/* If this CPU is not the most power-efficient idle CPU in the
-	 * lowest level domain, run load balance on behalf of that
-	 * most power-efficient idle CPU. */
-	rcu_read_lock();
-	sd = rcu_dereference_check_sched_domain(this_rq->sd);
-	if (sd && sysctl_sched_enable_power_aware) {
-		for_each_cpu(i, sched_domain_span(sd)) {
-			if (i == this_cpu || idle_cpu(i)) {
-				cost = power_cost_at_freq(i, 0);
-				if (cost < min_power) {
-					min_power = cost;
-					balance_cpu = i;
-				}
-			}
-		}
-		BUG_ON(balance_cpu == -1);
-
-	} else {
-		balance_cpu = this_cpu;
-	}
-	rcu_read_unlock();
-	balance_rq = cpu_rq(balance_cpu);
-
 /*
  * Update the rq's load with the elapsed idle time before a task is
  * scheduled. if the newly scheduled task is not a CFS task, idle_exit will
