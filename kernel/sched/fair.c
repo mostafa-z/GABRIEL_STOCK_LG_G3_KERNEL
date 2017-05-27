@@ -2517,7 +2517,8 @@ static inline int nr_big_tasks(struct rq *rq)
 
 #define sched_enable_power_aware 0
 
-static inline int select_best_cpu(struct task_struct *p, int target, int reason)
+static inline int select_best_cpu(struct task_struct *p, int target,
+				  int reason, int sync)
 {
 	return 0;
 }
@@ -5170,7 +5171,6 @@ select_task_rq_fair(struct task_struct *p, int sd_flag, int flags)
 						sd_flag & SD_BALANCE_WAKE);
 			if (power_cpu != -1)
 				goto unlock;
-		}
 	}
 
 	if (affine_sd) {

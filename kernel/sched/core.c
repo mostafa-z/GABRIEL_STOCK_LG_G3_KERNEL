@@ -3185,7 +3185,8 @@ static int
 try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 {
 	unsigned long flags;
-	int cpu, src_cpu, success = 0;
+	int cpu, success = 0;
+	unsigned long src_cpu;
 	int notify = 0;
 	struct migration_notify_data mnd;
 	int heavy_task = 0;
@@ -4009,18 +4010,6 @@ unsigned long nr_iowait(void)
 	return sum;
 }
 
-unsigned long nr_iowait_cpu(int cpu)
-{
-	struct rq *this = cpu_rq(cpu);
-	return atomic_read(&this->nr_iowait);
-}
-
-unsigned long this_cpu_load(void)
-{
-	struct rq *this = this_rq();
-	return this->cpu_load[0];
-}
-
 #if defined(CONFIG_INTELLI_HOTPLUG) || defined(CONFIG_MSM_RUN_QUEUE_STATS_BE_CONSERVATIVE)
 unsigned long avg_nr_running(void)
 {
@@ -4075,6 +4064,18 @@ unsigned long avg_cpu_nr_running(unsigned int cpu)
 }
 EXPORT_SYMBOL(avg_cpu_nr_running);
 #endif
+
+unsigned long nr_iowait_cpu(int cpu)
+{
+	struct rq *this = cpu_rq(cpu);
+	return atomic_read(&this->nr_iowait);
+}
+
+unsigned long this_cpu_load(void)
+{
+	struct rq *this = this_rq();
+	return this->cpu_load[0];
+}
 
 /*
  * Global load-average calculations
@@ -5169,12 +5170,9 @@ EXPORT_SYMBOL(preempt_schedule);
 asmlinkage void __sched preempt_schedule_irq(void)
 {
 	struct thread_info *ti = current_thread_info();
-	enum ctx_state prev_state;
 
 	/* Catch callers which need to be fixed */
 	BUG_ON(ti->preempt_count || !irqs_disabled());
-
-	prev_state = exception_enter();
 
 	do {
 		add_preempt_count(PREEMPT_ACTIVE);
@@ -5189,8 +5187,6 @@ asmlinkage void __sched preempt_schedule_irq(void)
 		 */
 		barrier();
 	} while (need_resched());
-
-	exception_exit(prev_state);
 }
 
 int default_wake_function(wait_queue_t *curr, unsigned mode, int wake_flags,
@@ -7353,7 +7349,6 @@ static int __migrate_task(struct task_struct *p, int src_cpu, int dest_cpu)
 {
 	struct rq *rq_dest, *rq_src;
 	bool moved = false;
-	bool notify = false;
 	int ret = 0;
 
 	if (unlikely(!cpu_active(dest_cpu)))
@@ -7386,8 +7381,6 @@ done:
 	ret = 1;
 fail:
 	double_rq_unlock(rq_src, rq_dest);
-
-	notify = task_notify_on_migrate(p);
 
 	raw_spin_unlock(&p->pi_lock);
 	if (moved && !same_freq_domain(src_cpu, dest_cpu)) {
@@ -8731,6 +8724,7 @@ static int sched_domains_numa_levels;
 static int *sched_domains_numa_distance;
 static struct cpumask ***sched_domains_numa_masks;
 static int sched_domains_curr_level;
+
 static inline int sd_local_flags(int level)
 {
 	if (sched_domains_numa_distance[level] > RECLAIM_DISTANCE)
