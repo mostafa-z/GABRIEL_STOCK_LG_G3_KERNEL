@@ -3161,7 +3161,6 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 {
 	unsigned long flags;
 	int cpu, src_cpu, success = 0;
-	bool notify = 0;
 	int notify = 0;
 	struct migration_notify_data mnd;
 	int heavy_task = 0;
