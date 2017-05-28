@@ -2891,10 +2891,8 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 		update_min_nice = 1;
 	} else {
 		/* all tunables other than min_nice are in percentage */
-		if ((sysctl_sched_downmigrate_pct >
-		    sysctl_sched_upmigrate_pct) ||
-		    (sysctl_sched_mostly_idle_load_pct >
-		    sysctl_sched_spill_load_pct) || *data > 100) {
+		if (sysctl_sched_downmigrate_pct >
+		    sysctl_sched_upmigrate_pct || *data > 100) {
 			*data = old_val;
 			ret = -EINVAL;
 			goto done;
@@ -7095,9 +7093,13 @@ bail_inter_cluster_balance(struct lb_env *env, struct sd_lb_stats *sds)
 	if (sds->busiest_nr_big_tasks)
 		return 0;
 
-	if ((sds->busiest_nr_running - sds->busiest_nr_small_tasks) <=
-				 sds->busiest_group_capacity)
-		return 1;
+	nr_cpus = cpumask_weight(sched_group_cpus(sds->busiest));
+
+	if ((sds->busiest_scaled_load < nr_cpus * sched_spill_load) &&
+		(sds->busiest_nr_running <
+			nr_cpus * sysctl_sched_spill_nr_run)) {
+			return 1;
+	}
 
 	return 0;
 }

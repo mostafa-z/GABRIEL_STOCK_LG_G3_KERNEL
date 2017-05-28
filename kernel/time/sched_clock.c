@@ -176,11 +176,6 @@ int sched_clock_initialized(void)
 	return initialized;
 }
 
-int sched_clock_initialized(void)
-{
-	return initialized;
-}
-
 void __init sched_clock_postinit(void)
 {
 	/*
