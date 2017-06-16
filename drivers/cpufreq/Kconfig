@@ -31,6 +31,9 @@ config SCHED_FREQ_INPUT
 	  help determine need for changing frequency well in advance of what
 	  a governor would have been able to detect on its own.
 
+config CPU_FREQ_GOV_COMMON
+	bool
+
 config CPU_FREQ_STAT
 	tristate "CPU frequency translation statistics"
 	select CPU_FREQ_TABLE
@@ -312,6 +315,7 @@ config CPU_FREQ_GOV_USERSPACE
 config CPU_FREQ_GOV_ONDEMAND
 	tristate "'ondemand' cpufreq policy governor"
 	select CPU_FREQ_TABLE
+	select CPU_FREQ_GOV_COMMON
 	help
 	  'ondemand' - This driver adds a dynamic cpufreq policy governor.
 	  The governor does a periodic polling and 
@@ -384,6 +388,7 @@ config LGE_LOW_BATT_LIMIT
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
+	select CPU_FREQ_GOV_COMMON
 	help
 	  'conservative' - this driver is rather similar to the 'ondemand'
 	  governor both in its source code and its purpose, the difference is
@@ -403,6 +408,7 @@ config CPU_FREQ_GOV_CONSERVATIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+
 config LGE_PM_CPU_FREQ_GOV_LCDOFF
 	bool "CPU_FREQ_BOOST job"
 	default n
