@@ -1480,15 +1480,8 @@ static int cpufreq_add_policy_cpu(struct cpufreq_policy *policy,
 	}
 
 	/* Don't touch sysfs links during light-weight init */
-	if (frozen) {
-		/* Drop the extra refcount that we took above */
- 		cpufreq_cpu_put(policy);
-		return 0;
- 	}
- 
-	ret = sysfs_create_link(&dev->kobj, &policy->kobj, "cpufreq");
-	if (ret)
-		cpufreq_cpu_put(policy);
+	if (!frozen)
+		ret = sysfs_create_link(&dev->kobj, &policy->kobj, "cpufreq");
 
 	return ret;
 }
@@ -1700,8 +1693,7 @@ module_out:
  * with with cpu hotplugging and all hell will break loose. Tried to clean this
  * mess up, but more thorough testing is needed. - Mathieu
  */
-static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif,
-			     bool frozen)
+static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 {
 	return __cpufreq_add_dev(dev, sif, false);
 }
@@ -1724,7 +1716,7 @@ static void update_policy_cpu(struct cpufreq_policy *policy, unsigned int cpu)
 }
 
 static int cpufreq_nominate_new_policy_cpu(struct cpufreq_policy *data,
-					   unsigned int old_cpu, bool frozen)
+					   unsigned int old_cpu)
 {
 	struct device *cpu_dev;
 	unsigned long flags;
@@ -1732,11 +1724,6 @@ static int cpufreq_nominate_new_policy_cpu(struct cpufreq_policy *data,
 
 	/* first sibling now owns the new sysfs dir */
 	cpu_dev = get_cpu_device(cpumask_first(data->cpus));
-
-	/* Don't touch sysfs files during light-weight tear-down */
-	if (frozen)
-		return cpu_dev->id;
-
 	sysfs_remove_link(&cpu_dev->kobj, "cpufreq");
 	ret = kobject_move(&data->kobj, &cpu_dev->kobj);
 	if (ret) {
@@ -1818,16 +1805,13 @@ static int __cpufreq_remove_dev(struct device *dev,
 	if (cpu != data->cpu && !frozen) {
 		sysfs_remove_link(&dev->kobj, "cpufreq");
 	} else if (cpus > 1) {
-		new_cpu = cpufreq_nominate_new_policy_cpu(data, cpu, frozen);
+		new_cpu = cpufreq_nominate_new_policy_cpu(data, cpu);
 		if (new_cpu >= 0) {
 			WARN_ON(lock_policy_rwsem_write(cpu));
 			update_policy_cpu(data, new_cpu);
 			unlock_policy_rwsem_write(cpu);
-
-			if (!frozen) {
-				pr_debug("%s: policy Kobject moved to cpu: %d "
-					 "from: %d\n",__func__, new_cpu, cpu);
-			}
+			pr_debug("%s: policy Kobject moved to cpu: %d "
+				 "from: %d\n",__func__, new_cpu, cpu);
 		}
 	}
 
