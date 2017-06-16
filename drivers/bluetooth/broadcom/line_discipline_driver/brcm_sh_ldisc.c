@@ -2064,11 +2064,9 @@ static struct platform_driver bcmbt_ldisc_platform_driver = {
            },
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
 struct netlink_kernel_cfg cfg = {
     .input = brcm_hcisnoop_recv_msg,
 };
-#endif
 
 static int __init bcmbt_ldisc_init(void)
 {
@@ -2084,12 +2082,7 @@ static int __init bcmbt_ldisc_init(void)
 
         /* start hci snoop to hcidump */
         /* Create socket for hcisnoop */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
-        nl_sk_hcisnoop = netlink_kernel_create(&init_net, NETLINK_USER, 0,
-                    brcm_hcisnoop_recv_msg, NULL, THIS_MODULE);
-#else
         nl_sk_hcisnoop = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
-#endif
         if (!nl_sk_hcisnoop)
         {
             BT_LDISC_ERR("Error creating netlink socket for HCI snoop");
