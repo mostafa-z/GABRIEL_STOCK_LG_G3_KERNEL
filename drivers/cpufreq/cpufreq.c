@@ -2799,11 +2799,11 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 #ifdef CONFIG_UNI_CPU_POLICY_LIMIT
 	if (policy->cpu) {
 		cpu0_policy = __cpufreq_cpu_get(0, 0);
-		data->min = cpu0_policy->min;
-		data->max = cpu0_policy->max;
+		policy->min = cpu0_policy->min;
+		policy->max = cpu0_policy->max;
 	} else {
-		data->min = policy->min;
-		data->max = policy->max;
+		policy->min = new_policy->min;
+		policy->max = new_policy->max;
 	}
 #else
 	policy->min = new_policy->min;
