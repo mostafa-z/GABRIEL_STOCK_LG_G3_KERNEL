@@ -363,9 +363,9 @@ static void cpufreq_powerstats_free(void)
 }
 
 static int cpufreq_stats_create_table(struct cpufreq_policy *policy,
-		struct cpufreq_frequency_table *table, int count)
+		struct cpufreq_frequency_table *table)
 {
-	unsigned int i, j, ret = 0;
+	unsigned int i, j, count = 0, ret = 0;
 	struct cpufreq_stats *stat;
 	struct cpufreq_policy *current_policy;
 	unsigned int alloc_size;
@@ -698,7 +698,7 @@ static int cpufreq_stats_create_table_cpu(unsigned int cpu)
 	if (!per_cpu(cpufreq_power_stats, cpu))
 		cpufreq_powerstats_create(cpu, table, count);
 
-	ret = cpufreq_stats_create_table(policy, table, count);
+	ret = cpufreq_stats_create_table(policy, table);
 
 out:
 	cpufreq_cpu_put(policy);

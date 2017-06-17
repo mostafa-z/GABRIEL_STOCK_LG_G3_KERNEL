@@ -705,7 +705,7 @@ static ssize_t store_scaling_max_freq
 			cpu, new_policy.max, limited_cpu_freq);
 	*/
 
-	ret = __cpufreq_set_policy(policy, &new_policy);
+	ret = cpufreq_set_policy(policy, &new_policy);
 	policy->user_policy.max = new_policy.max;
 
 #if defined(CONFIG_MULTI_CPU_POLICY_LIMIT) && \
@@ -1657,7 +1657,7 @@ static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif,
 	list_for_each_entry(tpolicy, &cpufreq_policy_list, policy_list) {
 		if (cpumask_test_cpu(cpu, tpolicy->related_cpus)) {
 			read_unlock_irqrestore(&cpufreq_driver_lock, flags);
-			return cpufreq_add_policy_cpu(tpolicy, cpu, dev)
+			return cpufreq_add_policy_cpu(tpolicy, cpu, dev);
 		}
 	}
 	read_unlock_irqrestore(&cpufreq_driver_lock, flags);
@@ -3088,7 +3088,7 @@ int cpufreq_set_gov(char *target_gov, unsigned int cpu)
 			goto err_out;
 		}
 
-		ret = __cpufreq_set_policy(cur_policy, &new_policy);
+		ret = cpufreq_set_policy(cur_policy, &new_policy);
 
 		cur_policy->user_policy.policy = cur_policy->policy;
 		cur_policy->user_policy.governor = cur_policy->governor;
