@@ -1744,8 +1744,8 @@ static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif,
 		policy->max = per_cpu(cpufreq_policy_save, cpu).max;
 		policy->user_policy.max = policy->max;
 	}
-	pr_debug("Restoring CPU%d min %d and max %d\n",
-		cpu, policy->min, policy->max);
+	pr_debug("Restoring CPU%d user policy min %d and max %d\n", cpu,
+		policy->min, policy->max);
 #endif
 
 	if (!frozen) {
@@ -1904,15 +1904,16 @@ static int __cpufreq_remove_dev_prepare(struct device *dev,
 		update_related_cpus(policy);
 
 	if (cpu != policy->cpu) {
-		if (!frozen)
-			sysfs_remove_link(&dev->kobj, "cpufreq");
+		sysfs_remove_link(&dev->kobj, "cpufreq");
 	} else if (cpus > 1) {
 		new_cpu = cpufreq_nominate_new_policy_cpu(policy, cpu);
 		if (new_cpu >= 0) {
 			update_policy_cpu(policy, new_cpu);
 
-			pr_debug("%s: policy Kobject moved to cpu: %d "
-				 "from: %d\n",__func__, new_cpu, cpu);
+			if (!frozen) {
+				pr_debug("%s: policy Kobject moved to cpu: %d from: %d\n",
+					__func__, new_cpu, cpu);
+			}
 		}
 	}
 
