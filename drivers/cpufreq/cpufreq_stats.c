@@ -108,7 +108,7 @@ static ssize_t show_time_in_state(struct cpufreq_policy *policy, char *buf)
 	for (i = 0; i < stat->state_num; i++) {
 		len += sprintf(buf + len, "%u %llu\n", stat->freq_table[i],
 			(unsigned long long)
-			jiffies_64_to_clock_t(stat->time_in_state[i]));
+			cputime64_to_clock_t(stat->time_in_state[i]));
 	}
 	return len;
 }
@@ -363,9 +363,9 @@ static void cpufreq_powerstats_free(void)
 }
 
 static int cpufreq_stats_create_table(struct cpufreq_policy *policy,
-		struct cpufreq_frequency_table *table)
+		struct cpufreq_frequency_table *table, int count)
 {
-	unsigned int i, j, count = 0, ret = 0;
+	unsigned int i, j, ret = 0;
 	struct cpufreq_stats *stat;
 	struct cpufreq_policy *current_policy;
 	unsigned int alloc_size;
@@ -603,6 +603,8 @@ static int cpufreq_stat_notifier_policy(struct notifier_block *nb,
 		return 0;
 	}
 
+	if (val != CPUFREQ_NOTIFY)
+		return 0;
 	table = cpufreq_frequency_get_table(cpu);
 	if (!table)
 		return 0;
@@ -621,17 +623,10 @@ static int cpufreq_stat_notifier_policy(struct notifier_block *nb,
 	if (!per_cpu(cpufreq_power_stats, cpu))
 		cpufreq_powerstats_create(cpu, table, count);
 
-	if (val == CPUFREQ_CREATE_POLICY)
-		ret = cpufreq_stats_create_table(policy, table);
-	else if (val == CPUFREQ_REMOVE_POLICY) {
-		/* This might already be freed by cpu hotplug notifier */
-		if (per_cpu(cpufreq_stats_table, cpu)) {
-			cpufreq_stats_free_sysfs(cpu);
-			cpufreq_stats_free_table(cpu);
-		}
-	}
-
-	return ret;
+	ret = cpufreq_stats_create_table(policy, table, count);
+	if (ret)
+		return ret;
+	return 0;
 }
 
 static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
@@ -698,7 +693,7 @@ static int cpufreq_stats_create_table_cpu(unsigned int cpu)
 	if (!per_cpu(cpufreq_power_stats, cpu))
 		cpufreq_powerstats_create(cpu, table, count);
 
-	ret = cpufreq_stats_create_table(policy, table);
+	ret = cpufreq_stats_create_table(policy, table, count);
 
 out:
 	cpufreq_cpu_put(policy);
@@ -710,10 +705,6 @@ static int cpufreq_stat_cpu_callback(struct notifier_block *nfb,
 					       void *hcpu)
 {
 	unsigned int cpu = (unsigned long)hcpu;
-
-	/* Don't free/allocate stats during suspend/resume */
-	if (action & CPU_TASKS_FROZEN)
-		return 0;
 
 	switch (action) {
 	case CPU_DOWN_PREPARE:
@@ -806,3 +797,4 @@ MODULE_LICENSE("GPL");
 
 module_init(cpufreq_stats_init);
 module_exit(cpufreq_stats_exit);
+
