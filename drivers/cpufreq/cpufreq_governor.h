@@ -168,6 +168,8 @@ struct cs_cpu_dbs_info_s {
 	unsigned int down_skip;
 	unsigned int requested_freq;
 	unsigned int enable:1;
+	unsigned int twostep_counter;
+	u64 twostep_time;
 };
 
 struct ex_cpu_dbs_info_s {

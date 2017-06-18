@@ -147,6 +147,11 @@ config CPU_FREQ_DEFAULT_GOV_CONSERVATIVE
 	  governor. If unsure have a look at the help section of the
 	  driver. Fallback governor will be the performance governor.
 
+config CPU_FREQ_DEFAULT_GOV_CONSERVATIVEX
+	bool "conservativex"
+	select CPU_FREQ_GOV_CONSERVATIVEX
+	select CPU_FREQ_GOV_PERFORMANCE
+
 config CPU_FREQ_DEFAULT_GOV_ZZMOOVE
 	  bool "zzmoove"
 	  select CPU_FREQ_GOV_ZZMOOVE
@@ -427,6 +432,7 @@ config LGE_LOW_BATT_LIMIT
 	tristate "to prevent UVLO at low voltage"
 	depends on CPU_FREQ
 	default n
+
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
@@ -450,6 +456,12 @@ config CPU_FREQ_GOV_CONSERVATIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_CONSERVATIVEX
+	tristate "'conservativex' cpufreq governor"
+	depends on CPU_FREQ
+	select CPU_FREQ_GOV_COMMON
+	default y
 
 config LGE_PM_CPU_FREQ_GOV_LCDOFF
 	bool "CPU_FREQ_BOOST job"
