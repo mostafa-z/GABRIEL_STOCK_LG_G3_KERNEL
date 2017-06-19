@@ -19,3 +19,4 @@ obj-$(CONFIG_FIQ_GLUE)		+= fiq_glue.o fiq_glue_setup.o
 obj-$(CONFIG_FIQ_DEBUGGER)	+= fiq_debugger.o
 obj-$(CONFIG_CP_ACCESS)         += cpaccess.o
 obj-$(CONFIG_MCPM)		+= mcpm_head.o mcpm_entry.o vlock.o
+obj-$(CONFIG_BL_SWITCHER)	+= bL_switcher.o
