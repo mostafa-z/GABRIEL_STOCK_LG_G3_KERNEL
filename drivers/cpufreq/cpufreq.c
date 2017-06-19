@@ -3361,7 +3361,7 @@ static int __init cpufreq_core_init(void)
 	for_each_possible_cpu(cpu)
 		init_rwsem(&per_cpu(cpu_policy_rwsem, cpu));
 
-	cpufreq_global_kobject = kobject_create();
+	cpufreq_global_kobject = kobject_create_and_add("cpufreq", &cpu_subsys.dev_root->kobj);
 	BUG_ON(!cpufreq_global_kobject);
 	register_syscore_ops(&cpufreq_syscore_ops);
 #if defined(CONFIG_LGE_LOW_BATT_LIMIT)
