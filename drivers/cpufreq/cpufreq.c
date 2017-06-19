@@ -352,9 +352,9 @@ static inline void adjust_jiffies(unsigned long val, struct cpufreq_freqs *ci)
  * function. It is called twice on all CPU frequency changes that have
  * external effects.
  */
-void cpufreq_notify_transition(struct cpufreq_freqs *freqs, unsigned int state)
+void cpufreq_notify_transition(struct cpufreq_policy *policy,
+		struct cpufreq_freqs *freqs, unsigned int state)
 {
-	struct cpufreq_policy *policy;
 	unsigned long flags;
 
 	BUG_ON(irqs_disabled());
@@ -2027,6 +2027,7 @@ static void handle_update(struct work_struct *work)
 static void cpufreq_out_of_sync(unsigned int cpu, unsigned int old_freq,
 				unsigned int new_freq)
 {
+	struct cpufreq_policy *policy = 0;
 	struct cpufreq_freqs freqs;
 
 	pr_debug("Warning: CPU frequency out of sync: cpufreq and timing "
@@ -2035,8 +2036,8 @@ static void cpufreq_out_of_sync(unsigned int cpu, unsigned int old_freq,
 	freqs.cpu = cpu;
 	freqs.old = old_freq;
 	freqs.new = new_freq;
-	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
-	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 }
 
 /**
