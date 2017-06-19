@@ -2,7 +2,6 @@ menu "CPU Frequency scaling"
 
 config CPU_FREQ
 	bool "CPU Frequency scaling"
-	select CPU_FREQ_TABLE
 	help
 	  CPU Frequency scaling allows you to change the clock speed of 
 	  CPUs on the fly. This is a nice method to save power, because 
@@ -17,9 +16,6 @@ config CPU_FREQ
 	  If in doubt, say N.
 
 if CPU_FREQ
-
-config CPU_FREQ_TABLE
-	tristate
 
 config SCHED_FREQ_INPUT
 	bool "Scheduler inputs to cpufreq governor"
@@ -37,7 +33,6 @@ config CPU_FREQ_GOV_COMMON
 
 config CPU_FREQ_STAT
 	tristate "CPU frequency translation statistics"
-	select CPU_FREQ_TABLE
 	default y
 	help
 	  This driver exports CPU frequency statistics information through sysfs
@@ -347,7 +342,6 @@ config CPU_FREQ_GOV_USERSPACE
 
 config CPU_FREQ_GOV_ONDEMAND
 	tristate "'ondemand' cpufreq policy governor"
-	select CPU_FREQ_TABLE
 	select CPU_FREQ_GOV_COMMON
 	help
 	  'ondemand' - This driver adds a dynamic cpufreq policy governor.
@@ -366,19 +360,16 @@ config CPU_FREQ_GOV_ONDEMAND
 
 config CPU_FREQ_GOV_ONDEMAND_LG
 	tristate "'ondemand_lg' cpufreq policy governor"
-	select CPU_FREQ_TABLE
 	select CPU_FREQ_GOV_COMMON
 	default y
 
 config CPU_FREQ_GOV_ONDEMANDX
 	tristate "'ondemandx' cpufreq policy governor"
-	select CPU_FREQ_TABLE
 	select CPU_FREQ_GOV_COMMON
 	default y
 
 config CPU_FREQ_GOV_ELEMENTALX
 	tristate "'elementalx' cpufreq policy governor"
-	select CPU_FREQ_TABLE
 	default y
 	help
 	  'elementalx' - This driver adds a dynamic cpufreq policy governor.
@@ -392,7 +383,6 @@ config CPU_FREQ_GOV_ELEMENTALX
 
 config CPU_FREQ_GOV_SLIM
 	tristate "'slim' cpufreq policy governor"
-	select CPU_FREQ_TABLE
 	help
 	  'slim' - This driver adds a dynamic cpufreq policy governor.
 
@@ -504,13 +494,11 @@ config CPU_FREQ_GOV_WHEATLEY
 
 config CPU_FREQ_GOV_SMARTMAX
         tristate "'smartmax' cpufreq policy governor"
-        select CPU_FREQ_TABLE
         help
           'smartmax' combined ondemand and smartass2
 
 config CPU_FREQ_GOV_SMARTMAX_EPS
         tristate "'smartmax EPS' cpufreq policy governor"
-        select CPU_FREQ_TABLE
         help
           'smartmax EPS' is the extreme powersaving version of smartmax
 
