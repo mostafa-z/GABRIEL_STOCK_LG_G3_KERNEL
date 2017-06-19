@@ -2842,9 +2842,9 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 			/* start new governor */
 #ifdef CONFIG_UNI_CPU_POLICY_LIMIT
 			if (policy->cpu && cpu0_policy) {
-				data->governor = cpu0_policy->governor;
+				policy->governor = cpu0_policy->governor;
 			} else {
-				data->governor = policy->governor;
+				policy->governor = policy->governor;
 			}
 #else
 			policy->governor = new_policy->governor;
